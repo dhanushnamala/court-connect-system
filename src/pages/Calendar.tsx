@@ -5,9 +5,10 @@ import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAllHearings, getCaseById } from "@/services/mockData";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Enhanced Calendar view with better UI
 const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const hearings = getAllHearings();
@@ -40,11 +41,11 @@ const Calendar = () => {
             </p>
           </div>
           <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
-            Schedule New Hearing
+            <CalendarDays className="mr-2 h-4 w-4" /> Schedule New Hearing
           </Button>
         </div>
         
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Court Hearings - {format(currentMonth, 'MMMM yyyy')}</CardTitle>
@@ -85,7 +86,7 @@ const Calendar = () => {
                   <div 
                     key={day.toString()}
                     className={cn(
-                      "h-28 border rounded-md overflow-hidden",
+                      "h-28 border rounded-md overflow-hidden hover:border-court-primary transition-colors cursor-pointer",
                       isToday ? "border-court-primary border-2" : "border-border"
                     )}
                   >
@@ -114,6 +115,41 @@ const Calendar = () => {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Hearings</CardTitle>
+            <CardDescription>Next scheduled court appearances</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {hearings
+                .filter(h => new Date(h.date) >= new Date() && h.status === 'scheduled')
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .slice(0, 5)
+                .map(hearing => {
+                  const relatedCase = getCaseById(hearing.caseId);
+                  return (
+                    <div key={hearing.id} className="p-3 border rounded-lg hover:border-court-primary transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{relatedCase?.title}</h3>
+                          <p className="text-sm text-muted-foreground">Case #{relatedCase?.caseNumber}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{format(new Date(hearing.date), 'MMM dd, yyyy')}</p>
+                          <p className="text-sm">{hearing.time} • {hearing.duration} min</p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-sm">{hearing.courtroom} • {hearing.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </CardContent>
         </Card>
