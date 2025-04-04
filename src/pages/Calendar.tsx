@@ -1,17 +1,50 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAllHearings, getCaseById } from "@/services/mockData";
+import { getAllHearings, getCaseById, getCasesByClient, getCasesByLawyer, getCasesByJudge, Hearing } from "@/services/mockData";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 // Enhanced Calendar view with better UI
 const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const hearings = getAllHearings();
+  const [filteredHearings, setFilteredHearings] = useState<Hearing[]>([]);
+  const { user, role } = useAuth();
+  
+  // Filter hearings based on user role
+  useEffect(() => {
+    const allHearings = getAllHearings();
+    
+    if (role === 'admin') {
+      // Admin sees all hearings
+      setFilteredHearings(allHearings);
+    } else if (user) {
+      // Filter hearings based on user role and ID
+      let userCases = [];
+      
+      if (role === 'client') {
+        userCases = getCasesByClient(user.id);
+      } else if (role === 'lawyer') {
+        userCases = getCasesByLawyer(user.id);
+      } else if (role === 'judge') {
+        userCases = getCasesByJudge(user.id);
+      }
+      
+      // Get case IDs relevant to this user
+      const userCaseIds = userCases.map(c => c.id);
+      
+      // Filter hearings to only those related to the user's cases
+      const userHearings = allHearings.filter(hearing => 
+        userCaseIds.includes(hearing.caseId)
+      );
+      
+      setFilteredHearings(userHearings);
+    }
+  }, [user, role]);
   
   // Get days for the current month view
   const monthStart = startOfMonth(currentMonth);
@@ -20,7 +53,7 @@ const Calendar = () => {
   
   // Get hearings for each day
   const getHearingsForDay = (date: Date) => {
-    return hearings.filter(hearing => {
+    return filteredHearings.filter(hearing => {
       const hearingDate = new Date(hearing.date);
       return isSameDay(hearingDate, date);
     });
@@ -37,18 +70,26 @@ const Calendar = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
             <p className="text-muted-foreground">
-              View and manage all scheduled court hearings
+              {role === 'admin' 
+                ? 'View and manage all scheduled court hearings' 
+                : 'View and track your scheduled court hearings'}
             </p>
           </div>
-          <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
-            <CalendarDays className="mr-2 h-4 w-4" /> Schedule New Hearing
-          </Button>
+          {role === 'admin' && (
+            <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
+              <CalendarDays className="mr-2 h-4 w-4" /> Schedule New Hearing
+            </Button>
+          )}
         </div>
         
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Court Hearings - {format(currentMonth, 'MMMM yyyy')}</CardTitle>
+              <CardTitle>
+                {role === 'admin' 
+                  ? `Court Hearings - ${format(currentMonth, 'MMMM yyyy')}` 
+                  : `Your Hearings - ${format(currentMonth, 'MMMM yyyy')}`}
+              </CardTitle>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={prevMonth}>
                   <ChevronLeft className="h-4 w-4" />
@@ -59,7 +100,9 @@ const Calendar = () => {
               </div>
             </div>
             <CardDescription>
-              Calendar view of all scheduled hearings
+              {role === 'admin' 
+                ? 'Calendar view of all scheduled hearings' 
+                : 'Calendar view of your scheduled hearings'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -121,12 +164,16 @@ const Calendar = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming Hearings</CardTitle>
-            <CardDescription>Next scheduled court appearances</CardDescription>
+            <CardTitle>
+              {role === 'admin' ? 'Upcoming Hearings' : 'Your Upcoming Hearings'}
+            </CardTitle>
+            <CardDescription>
+              {role === 'admin' ? 'Next scheduled court appearances' : 'Your next scheduled court appearances'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {hearings
+              {filteredHearings
                 .filter(h => new Date(h.date) >= new Date() && h.status === 'scheduled')
                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                 .slice(0, 5)
@@ -150,6 +197,11 @@ const Calendar = () => {
                     </div>
                   );
                 })}
+              {filteredHearings.filter(h => new Date(h.date) >= new Date() && h.status === 'scheduled').length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No upcoming hearings found
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
