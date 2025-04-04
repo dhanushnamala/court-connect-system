@@ -14,9 +14,9 @@ const JudgeDashboard = () => {
   const [upcomingHearings, setUpcomingHearings] = useState<(Hearing & { caseTitle: string })[]>([]);
 
   useEffect(() => {
-    // In a real app, we would use the actual judge ID
-    // For demo purposes, we'll use judge ID 1
-    const judgeCases = getCasesByJudge('1');
+    // Use actual judge ID from auth if available, otherwise use default for demo
+    const judgeId = user?.id || '1';
+    const judgeCases = getCasesByJudge(judgeId);
     setCases(judgeCases);
     
     // Get upcoming hearings for this judge's cases

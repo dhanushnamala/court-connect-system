@@ -12,9 +12,9 @@ const ClientDashboard = () => {
   const [lawyers, setLawyers] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
-    // In a real app, we would use the actual client ID
-    // For demo purposes, we'll use client ID 2
-    const clientCases = getCasesByClient('2');
+    // Use actual client ID from auth if available, otherwise use default for demo
+    const clientId = user?.id || '2';
+    const clientCases = getCasesByClient(clientId);
     setCases(clientCases);
     
     // Get lawyer details for each case
