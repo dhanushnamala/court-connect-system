@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -20,25 +20,48 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { getCases, Case, CaseStatus, CaseType, getPersonById } from "@/services/mockData";
+import { getCases, getCasesByClient, getCasesByLawyer, getCasesByJudge, Case, CaseStatus, CaseType, getPersonById } from "@/services/mockData";
 import { Search, Plus, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const Cases = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
   const [typeFilter, setTypeFilter] = useState<CaseType | "all">("all");
+  const [filteredCases, setFilteredCases] = useState<Case[]>([]);
+  const { user, role } = useAuth();
   
-  // Get cases and apply filters
-  const allCases = getCases();
-  const filteredCases = allCases.filter(c => {
-    const matchesSearch = c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         c.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchesType = typeFilter === "all" || c.type === typeFilter;
+  useEffect(() => {
+    let userCases: Case[] = [];
     
-    return matchesSearch && matchesStatus && matchesType;
-  });
+    // Get cases based on the user's role
+    if (role === 'admin') {
+      // Admins see all cases
+      userCases = getCases();
+    } else if (role === 'client' && user) {
+      // Clients only see their own cases
+      userCases = getCasesByClient(user.id);
+    } else if (role === 'lawyer' && user) {
+      // Lawyers only see cases they're assigned to
+      userCases = getCasesByLawyer(user.id);
+    } else if (role === 'judge' && user) {
+      // Judges only see cases they're presiding over
+      userCases = getCasesByJudge(user.id);
+    }
+    
+    // Apply filters
+    const filtered = userCases.filter(c => {
+      const matchesSearch = c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           c.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+      const matchesType = typeFilter === "all" || c.type === typeFilter;
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
+    
+    setFilteredCases(filtered);
+  }, [user, role, searchTerm, statusFilter, typeFilter]);
 
   // Status badge styling
   const getStatusStyle = (status: CaseStatus) => {
@@ -79,12 +102,14 @@ const Cases = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Cases</h1>
             <p className="text-muted-foreground">
-              Manage and track all your legal cases
+              {role === 'admin' ? 'Manage and track all legal cases' : 'View and track your cases'}
             </p>
           </div>
-          <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
-            <Plus className="mr-2 h-4 w-4" /> Add New Case
-          </Button>
+          {role === 'admin' && (
+            <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
+              <Plus className="mr-2 h-4 w-4" /> Add New Case
+            </Button>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border shadow-sm">
@@ -143,9 +168,9 @@ const Cases = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Filing Date</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Lawyer</TableHead>
-                  <TableHead>Judge</TableHead>
+                  {role === 'admin' || role === 'judge' || role === 'lawyer' ? <TableHead>Client</TableHead> : null}
+                  {role === 'admin' || role === 'client' || role === 'judge' ? <TableHead>Lawyer</TableHead> : null}
+                  {role === 'admin' || role === 'client' || role === 'lawyer' ? <TableHead>Judge</TableHead> : null}
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -175,9 +200,15 @@ const Cases = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>{caseItem.filingDate}</TableCell>
-                        <TableCell>{client?.name}</TableCell>
-                        <TableCell>{lawyer?.name}</TableCell>
-                        <TableCell>{judge?.name}</TableCell>
+                        {(role === 'admin' || role === 'judge' || role === 'lawyer') && (
+                          <TableCell>{client?.name}</TableCell>
+                        )}
+                        {(role === 'admin' || role === 'client' || role === 'judge') && (
+                          <TableCell>{lawyer?.name}</TableCell>
+                        )}
+                        {(role === 'admin' || role === 'client' || role === 'lawyer') && (
+                          <TableCell>{judge?.name}</TableCell>
+                        )}
                         <TableCell>
                           <Link to={`/cases/${caseItem.id}`} className="text-court-primary hover:text-court-primary/90">
                             <FileText className="h-5 w-5" />
@@ -188,7 +219,7 @@ const Cases = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-6">
+                    <TableCell colSpan={role === 'admin' ? 9 : 7} className="text-center py-6">
                       No cases found matching your filters
                     </TableCell>
                   </TableRow>
