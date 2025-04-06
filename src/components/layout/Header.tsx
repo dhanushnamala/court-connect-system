@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Bell, Menu, Search, X } from "lucide-react";
+import { Bell, Mail, Menu, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -57,6 +57,9 @@ const Header = () => {
             )}
             <Link to="/documents" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Documents
+            </Link>
+            <Link to="/contact-us" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Contact
             </Link>
           </nav>
         </div>
@@ -142,6 +145,13 @@ const Header = () => {
               onClick={() => setShowMobileMenu(false)}
             >
               Documents
+            </Link>
+            <Link 
+              to="/contact-us" 
+              className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+              onClick={() => setShowMobileMenu(false)}
+            >
+              Contact
             </Link>
           </nav>
         </div>

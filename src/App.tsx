@@ -15,6 +15,7 @@ import Calendar from "./pages/Calendar";
 import Documents from "./pages/Documents";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
+import ContactUs from "./pages/ContactUs";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/contact-us" element={<ContactUs />} />
     
     {/* Protected routes */}
     <Route path="/dashboard" element={
