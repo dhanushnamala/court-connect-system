@@ -8,12 +8,17 @@ import { getAllHearings, getCaseById, getCasesByClient, getCasesByLawyer, getCas
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 // Enhanced Calendar view with better UI
 const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filteredHearings, setFilteredHearings] = useState<Hearing[]>([]);
   const { user, role } = useAuth();
+  const [selectedHearing, setSelectedHearing] = useState<Hearing | null>(null);
+  const [selectedCase, setSelectedCase] = useState<any | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   // Filter hearings based on user role
   useEffect(() => {
@@ -62,6 +67,46 @@ const Calendar = () => {
   // Navigate between months
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  
+  // Handle hearing click to show case details
+  const handleHearingClick = (hearing: Hearing) => {
+    const caseData = getCaseById(hearing.caseId);
+    setSelectedHearing(hearing);
+    setSelectedCase(caseData);
+    setIsDialogOpen(true);
+  };
+  
+  // Get status badge styling
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800 hover:bg-green-100";
+      case "pending":
+        return "bg-blue-100 text-blue-800 hover:bg-blue-100";
+      case "closed":
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+      case "appealed":
+        return "bg-amber-100 text-amber-800 hover:bg-amber-100";
+      default:
+        return "";
+    }
+  };
+
+  // Get type badge styling
+  const getTypeStyle = (type: string) => {
+    switch (type) {
+      case "criminal":
+        return "bg-red-100 text-red-800 hover:bg-red-100";
+      case "civil":
+        return "bg-purple-100 text-purple-800 hover:bg-purple-100";
+      case "family":
+        return "bg-teal-100 text-teal-800 hover:bg-teal-100";
+      case "corporate":
+        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
+      default:
+        return "";
+    }
+  };
 
   return (
     <PageLayout>
@@ -129,7 +174,7 @@ const Calendar = () => {
                   <div 
                     key={day.toString()}
                     className={cn(
-                      "h-28 border rounded-md overflow-hidden hover:border-court-primary transition-colors cursor-pointer",
+                      "h-28 border rounded-md overflow-hidden hover:border-court-primary transition-colors",
                       isToday ? "border-court-primary border-2" : "border-border"
                     )}
                   >
@@ -146,7 +191,8 @@ const Calendar = () => {
                           return (
                             <div 
                               key={hearing.id} 
-                              className="text-xs p-1 mb-1 bg-court-accent/10 border border-court-accent/20 rounded truncate"
+                              className="text-xs p-1 mb-1 bg-court-accent/10 border border-court-accent/20 rounded truncate hover:bg-court-accent/20 cursor-pointer"
+                              onClick={() => handleHearingClick(hearing)}
                             >
                               <p className="font-medium truncate">{hearing.time} - {relatedCase?.title}</p>
                               <p className="truncate text-muted-foreground">{hearing.courtroom}</p>
@@ -180,7 +226,11 @@ const Calendar = () => {
                 .map(hearing => {
                   const relatedCase = getCaseById(hearing.caseId);
                   return (
-                    <div key={hearing.id} className="p-3 border rounded-lg hover:border-court-primary transition-colors">
+                    <div 
+                      key={hearing.id} 
+                      className="p-3 border rounded-lg hover:border-court-primary transition-colors cursor-pointer"
+                      onClick={() => handleHearingClick(hearing)}
+                    >
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-medium">{relatedCase?.title}</h3>
@@ -205,9 +255,110 @@ const Calendar = () => {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Case Details Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            {selectedCase && selectedHearing && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>{selectedCase.title}</DialogTitle>
+                  <DialogDescription>
+                    Case #{selectedCase.caseNumber}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge className={cn("capitalize", getStatusStyle(selectedCase.status))}>
+                      {selectedCase.status}
+                    </Badge>
+                    <Badge className={cn("capitalize", getTypeStyle(selectedCase.type))}>
+                      {selectedCase.type}
+                    </Badge>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Hearing Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Date & Time</p>
+                        <p>{format(new Date(selectedHearing.date), 'MMMM dd, yyyy')} at {selectedHearing.time}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duration</p>
+                        <p>{selectedHearing.duration} minutes</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Courtroom</p>
+                        <p>{selectedHearing.courtroom}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <p className="capitalize">{selectedHearing.status}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Case Information</h3>
+                    <p className="mb-2">{selectedCase.description}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Filing Date</p>
+                        <p>{selectedCase.filingDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Filing Location</p>
+                        <p>{selectedCase.courtroom}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Parties Involved</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Client</p>
+                        <p>{selectedCase.clientName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Attorney</p>
+                        <p>{selectedCase.lawyerName}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Judge</p>
+                        <p>{selectedCase.judgeName}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    className="mr-2"
+                  >
+                    Close
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      window.location.href = `/cases/${selectedCase.id}`;
+                    }}
+                  >
+                    View Full Case
+                  </Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </PageLayout>
   );
 };
 
 export default Calendar;
+
