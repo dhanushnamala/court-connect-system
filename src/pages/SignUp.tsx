@@ -64,9 +64,9 @@ const SignUp = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <div className="flex justify-center mb-2">
-            <div className="h-12 w-12 rounded-md bg-court-primary flex items-center justify-center">
+            <Link to="/" className="h-12 w-12 rounded-md bg-court-primary flex items-center justify-center">
               <span className="text-white font-bold text-lg">CCS</span>
-            </div>
+            </Link>
           </div>
           <h1 className="text-3xl font-bold text-court-primary">Court Connect System</h1>
           <p className="text-muted-foreground mt-2">Create your account</p>
