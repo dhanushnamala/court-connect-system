@@ -16,6 +16,7 @@ import Documents from "./pages/Documents";
 import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import ContactUs from "./pages/ContactUs";
+import Queries from "./pages/Queries";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,12 @@ const AppRoutes = () => (
     <Route path="/users" element={
       <AdminRoute>
         <Users />
+      </AdminRoute>
+    } />
+    
+    <Route path="/queries" element={
+      <AdminRoute>
+        <Queries />
       </AdminRoute>
     } />
     

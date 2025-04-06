@@ -58,9 +58,15 @@ const Header = () => {
             <Link to="/documents" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Documents
             </Link>
-            <Link to="/contact-us" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Contact
-            </Link>
+            {role === "admin" ? (
+              <Link to="/queries" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                Queries
+              </Link>
+            ) : (
+              <Link to="/contact-us" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                Contact
+              </Link>
+            )}
           </nav>
         </div>
         
@@ -146,13 +152,23 @@ const Header = () => {
             >
               Documents
             </Link>
-            <Link 
-              to="/contact-us" 
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              Contact
-            </Link>
+            {role === "admin" ? (
+              <Link 
+                to="/queries" 
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Queries
+              </Link>
+            ) : (
+              <Link 
+                to="/contact-us" 
+                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Contact
+              </Link>
+            )}
           </nav>
         </div>
       </div>
