@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import Cases from "./pages/Cases";
 import CaseDetail from "./pages/CaseDetail";
@@ -17,6 +18,7 @@ import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import ContactUs from "./pages/ContactUs";
 import Queries from "./pages/Queries";
+import LearnMore from "./pages/LearnMore";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +57,8 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<SignUp />} />
+    <Route path="/learn-more" element={<LearnMore />} />
     <Route path="/contact-us" element={<ContactUs />} />
     
     {/* Protected routes */}

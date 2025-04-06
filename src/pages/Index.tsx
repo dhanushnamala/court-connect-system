@@ -23,9 +23,12 @@ const Index = () => {
             </div>
             <span className="font-bold text-xl text-court-primary">Court Connect</span>
           </div>
-          <div>
+          <div className="flex gap-2">
             <Link to="/login">
               <Button className="bg-court-primary hover:bg-court-primary/90">Sign In</Button>
+            </Link>
+            <Link to="/signup">
+              <Button variant="outline">Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -42,14 +45,16 @@ const Index = () => {
               Streamline your legal workflow with our comprehensive case management platform designed for courts, lawyers, and clients.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/login">
+              <Link to="/signup">
                 <Button size="lg" className="bg-court-primary hover:bg-court-primary/90">
                   Get Started
                 </Button>
               </Link>
-              <Button size="lg" variant="outline">
-                Learn More
-              </Button>
+              <Link to="/learn-more">
+                <Button size="lg" variant="outline">
+                  Learn More
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
@@ -109,11 +114,18 @@ const Index = () => {
             <p className="text-xl mb-8 opacity-90">
               Join courts, law firms, and legal professionals already using our platform.
             </p>
-            <Link to="/login">
-              <Button size="lg" className="bg-white text-court-primary hover:bg-gray-100">
-                Sign In Now
-              </Button>
-            </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/signup">
+                <Button size="lg" className="bg-white text-court-primary hover:bg-gray-100">
+                  Sign Up Now
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button size="lg" variant="outline" className="border-white text-white hover:bg-court-primary/90">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       </main>
