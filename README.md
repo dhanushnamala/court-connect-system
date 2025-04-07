@@ -1,7 +1,7 @@
 
 # Court Connect System
 
-A comprehensive court case management system built with React, TypeScript, and Supabase.
+... existing content ...
 
 ## Supabase Configuration
 
@@ -11,12 +11,10 @@ To run this application, you need to configure Supabase:
 2. Add the following environment variables:
 
 ```
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_URL=https://vhybphxmzlyesdfvusst.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoeWJwaHhtemx5ZXNkZnZ1c3N0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwMDg0NDQsImV4cCI6MjA1OTU4NDQ0NH0.toAGZG_vrD8kQEd1L_rS8sadD_CTsccQLvRbXx-Gr_M
 ```
 
-Replace `your-project-id` and `your-anon-key` with your actual Supabase project values.
+3. If developing locally, these values can also be found in your Supabase project dashboard.
 
-3. If developing locally, you can also edit the fallback values in `src/lib/supabase.ts`
-
-See `SUPABASE_SETUP.md` for more detailed instructions on setting up your Supabase project.
+See `SUPABASE_SETUP.md` for more detailed instructions.
