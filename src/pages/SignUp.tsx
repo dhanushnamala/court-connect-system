@@ -24,21 +24,25 @@ const SignUp = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"client" | "lawyer">("client");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     
     // Basic validation
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      setIsSubmitting(false);
       return;
     }
     
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
+      setIsSubmitting(false);
       return;
     }
     
@@ -51,6 +55,8 @@ const SignUp = () => {
       } else {
         setError("An unknown error occurred");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -150,8 +156,12 @@ const SignUp = () => {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full bg-court-primary hover:bg-court-primary/90" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create Account"}
+              <Button 
+                type="submit" 
+                className="w-full bg-court-primary hover:bg-court-primary/90" 
+                disabled={isLoading || isSubmitting}
+              >
+                {isSubmitting ? "Creating account..." : "Create Account"}
               </Button>
               <div className="text-sm text-center">
                 Already have an account?{" "}

@@ -45,26 +45,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Get user profile data from the profiles table
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching user profile:', error);
-          setIsLoading(false);
-          return;
+        try {
+          // Check if the profiles table exists first
+          const { error: tableCheckError } = await supabase
+            .from('profiles')
+            .select('count')
+            .limit(1)
+            .throwOnError();
+          
+          if (tableCheckError) {
+            console.error('Error checking profiles table:', tableCheckError);
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || 'User',
+              role: (session.user.user_metadata?.role as UserRole) || 'client',
+            });
+            setRole((session.user.user_metadata?.role as UserRole) || 'client');
+          } else {
+            // Profiles table exists, fetch user profile
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .maybeSingle();
+
+            if (error) {
+              console.error('Error fetching user profile:', error);
+              // Fallback to user metadata from session
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.name || 'User',
+                role: (session.user.user_metadata?.role as UserRole) || 'client',
+              });
+              setRole((session.user.user_metadata?.role as UserRole) || 'client');
+            } else if (profile) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                name: profile.name || '',
+                role: profile.role,
+              });
+              setRole(profile.role);
+            }
+          }
+        } catch (error) {
+          console.error('Session check error:', error);
+          // Fallback to user metadata from session
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || 'User',
+            role: (session.user.user_metadata?.role as UserRole) || 'client',
+          });
+          setRole((session.user.user_metadata?.role as UserRole) || 'client');
         }
-        
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: profile.name || '',
-          role: profile.role,
-        });
-        setRole(profile.role);
       }
       
       setIsLoading(false);
@@ -77,26 +113,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       async (event, session) => {
         if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
           setIsLoading(true);
-          // Get user profile data
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (error) {
-            console.error('Error fetching user profile:', error);
-            setIsLoading(false);
-            return;
+
+          try {
+            // Check if the profiles table exists
+            const { error: tableCheckError } = await supabase
+              .from('profiles')
+              .select('count')
+              .limit(1)
+              .throwOnError();
+
+            if (tableCheckError) {
+              // If table doesn't exist, use user metadata
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.name || 'User',
+                role: (session.user.user_metadata?.role as UserRole) || 'client',
+              });
+              setRole((session.user.user_metadata?.role as UserRole) || 'client');
+            } else {
+              // Profiles table exists, fetch user profile
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              if (error) {
+                console.error('Error fetching user profile:', error);
+                // Fallback to user metadata
+                setUser({
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  name: session.user.user_metadata?.name || 'User',
+                  role: (session.user.user_metadata?.role as UserRole) || 'client',
+                });
+                setRole((session.user.user_metadata?.role as UserRole) || 'client');
+              } else if (profile) {
+                setUser({
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  name: profile.name || '',
+                  role: profile.role,
+                });
+                setRole(profile.role);
+              }
+            }
+          } catch (error) {
+            console.error('Auth state change error:', error);
+            // Fallback to metadata
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || 'User',
+              role: (session.user.user_metadata?.role as UserRole) || 'client',
+            });
+            setRole((session.user.user_metadata?.role as UserRole) || 'client');
           }
-          
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: profile.name || '',
-            role: profile.role,
-          });
-          setRole(profile.role);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setRole(null);
@@ -121,18 +194,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) throw error;
       
-      // Get profile for the user to get role information
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      
-      if (profileError) throw profileError;
-      
+      // User metadata will be accessed through the auth state change handler
       toast({
         title: "Login successful",
-        description: `Welcome back, ${profile.name}!`,
+        description: `Welcome back!`,
       });
       
       navigate('/dashboard');
@@ -142,6 +207,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Login failed",
         description: error.message || "An unknown error occurred",
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -151,18 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // First check if user already exists
-      const { data: existingUsers } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .limit(1);
-        
-      if (existingUsers && existingUsers.length > 0) {
-        throw new Error('An account with this email already exists');
-      }
-      
-      // Sign up the user with emailConfirm: false to skip confirmation
+      // Sign up the user with emailRedirectTo to skip confirmation
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -171,7 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name,
             role: userRole,
           },
-          emailRedirectTo: window.location.origin + '/dashboard',
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         }
       });
       
@@ -181,18 +236,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Failed to create user account');
       }
       
-      // Create a profile record for the user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{ 
-          id: data.user.id, 
-          name,
-          email, 
-          role: userRole,
-          created_at: new Date() 
-        }]);
-      
-      if (profileError) throw profileError;
+      try {
+        // Check if profiles table exists before trying to insert
+        const { error: tableCheckError } = await supabase
+          .from('profiles')
+          .select('count')
+          .limit(1)
+          .throwOnError();
+          
+        if (!tableCheckError) {
+          // If table exists, create the profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: data.user.id, 
+              name,
+              email, 
+              role: userRole,
+              created_at: new Date() 
+            }]);
+          
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            // Continue without throwing error - we'll use the auth metadata instead
+          }
+        }
+      } catch (profileErr) {
+        console.error('Profile creation error:', profileErr);
+        // Continue without throwing error - we'll use the auth metadata instead
+      }
       
       toast({
         title: "Account created successfully",
@@ -208,6 +280,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Sign up failed",
         description: error.message || "An unknown error occurred",
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
