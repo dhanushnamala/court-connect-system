@@ -46,53 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session) {
         try {
-          // Check if the profiles table exists first
-          const { error: tableCheckError } = await supabase
-            .from('profiles')
-            .select('count')
-            .limit(1)
-            .throwOnError();
-          
-          if (tableCheckError) {
-            console.error('Error checking profiles table:', tableCheckError);
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.user_metadata?.name || 'User',
-              role: (session.user.user_metadata?.role as UserRole) || 'client',
-            });
-            setRole((session.user.user_metadata?.role as UserRole) || 'client');
-          } else {
-            // Profiles table exists, fetch user profile
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            if (error) {
-              console.error('Error fetching user profile:', error);
-              // Fallback to user metadata from session
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.user_metadata?.name || 'User',
-                role: (session.user.user_metadata?.role as UserRole) || 'client',
-              });
-              setRole((session.user.user_metadata?.role as UserRole) || 'client');
-            } else if (profile) {
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: profile.name || '',
-                role: profile.role,
-              });
-              setRole(profile.role);
-            }
-          }
-        } catch (error) {
-          console.error('Session check error:', error);
-          // Fallback to user metadata from session
+          // Set basic user info from session
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -100,6 +54,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             role: (session.user.user_metadata?.role as UserRole) || 'client',
           });
           setRole((session.user.user_metadata?.role as UserRole) || 'client');
+        } catch (error) {
+          console.error('Session check error:', error);
         }
       }
       
@@ -110,66 +66,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          setIsLoading(true);
-
-          try {
-            // Check if the profiles table exists
-            const { error: tableCheckError } = await supabase
-              .from('profiles')
-              .select('count')
-              .limit(1)
-              .throwOnError();
-
-            if (tableCheckError) {
-              // If table doesn't exist, use user metadata
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.user_metadata?.name || 'User',
-                role: (session.user.user_metadata?.role as UserRole) || 'client',
-              });
-              setRole((session.user.user_metadata?.role as UserRole) || 'client');
-            } else {
-              // Profiles table exists, fetch user profile
-              const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .maybeSingle();
-
-              if (error) {
-                console.error('Error fetching user profile:', error);
-                // Fallback to user metadata
-                setUser({
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  name: session.user.user_metadata?.name || 'User',
-                  role: (session.user.user_metadata?.role as UserRole) || 'client',
-                });
-                setRole((session.user.user_metadata?.role as UserRole) || 'client');
-              } else if (profile) {
-                setUser({
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  name: profile.name || '',
-                  role: profile.role,
-                });
-                setRole(profile.role);
-              }
-            }
-          } catch (error) {
-            console.error('Auth state change error:', error);
-            // Fallback to metadata
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.user_metadata?.name || 'User',
-              role: (session.user.user_metadata?.role as UserRole) || 'client',
-            });
-            setRole((session.user.user_metadata?.role as UserRole) || 'client');
-          }
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || 'User',
+            role: (session.user.user_metadata?.role as UserRole) || 'client',
+          });
+          setRole((session.user.user_metadata?.role as UserRole) || 'client');
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setRole(null);
@@ -194,7 +99,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) throw error;
       
-      // User metadata will be accessed through the auth state change handler
       toast({
         title: "Login successful",
         description: `Welcome back!`,
@@ -202,6 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       navigate('/dashboard');
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         variant: "destructive",
         title: "Login failed",
@@ -217,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Sign up the user with emailRedirectTo to skip confirmation
+      // Sign up without email confirmation
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -236,45 +141,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Failed to create user account');
       }
       
-      try {
-        // Check if profiles table exists before trying to insert
-        const { error: tableCheckError } = await supabase
-          .from('profiles')
-          .select('count')
-          .limit(1)
-          .throwOnError();
-          
-        if (!tableCheckError) {
-          // If table exists, create the profile
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ 
-              id: data.user.id, 
-              name,
-              email, 
-              role: userRole,
-              created_at: new Date() 
-            }]);
-          
-          if (profileError) {
-            console.error('Error creating profile:', profileError);
-            // Continue without throwing error - we'll use the auth metadata instead
-          }
-        }
-      } catch (profileErr) {
-        console.error('Profile creation error:', profileErr);
-        // Continue without throwing error - we'll use the auth metadata instead
+      // Create profile record manually
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ 
+          id: data.user.id, 
+          name,
+          email, 
+          role: userRole,
+          created_at: new Date() 
+        }]);
+      
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Continue - we'll use auth metadata instead
+      }
+      
+      // Auto sign in after signup
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (signInError) {
+        console.error("Auto sign-in error:", signInError);
+        throw new Error('Account created, but failed to automatically sign in.');
       }
       
       toast({
         title: "Account created successfully",
-        description: "You can now log in with your new account.",
+        description: "You can now use your new account.",
       });
       
-      // Auto login the user after successful signup
-      await login(email, password);
+      navigate('/dashboard');
       
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         variant: "destructive",
         title: "Sign up failed",

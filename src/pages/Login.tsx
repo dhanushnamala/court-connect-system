@@ -13,11 +13,14 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, isLoading, isAuthenticated } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
+    
     try {
       await login(email, password);
     } catch (err) {
@@ -26,6 +29,8 @@ const Login = () => {
       } else {
         setError("An unknown error occurred");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -101,8 +106,12 @@ const Login = () => {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full bg-court-primary hover:bg-court-primary/90" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
+              <Button 
+                type="submit" 
+                className="w-full bg-court-primary hover:bg-court-primary/90" 
+                disabled={isLoading || isSubmitting}
+              >
+                {isSubmitting ? "Signing in..." : "Sign in"}
               </Button>
               <div className="text-sm text-center">
                 Don't have an account?{" "}

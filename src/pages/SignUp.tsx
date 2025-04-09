@@ -33,23 +33,43 @@ const SignUp = () => {
     setError("");
     setIsSubmitting(true);
     
-    // Basic validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
-      setIsSubmitting(false);
-      return;
-    }
-    
     try {
+      // Basic validation
+      if (!name.trim()) {
+        throw new Error("Name is required");
+      }
+      
+      if (!email.trim()) {
+        throw new Error("Email is required");
+      }
+      
+      if (password !== confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+      
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
+      }
+
+      // Check if the email already exists
+      const { data: existingUserData, error: checkError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking existing user:", checkError);
+      }
+
+      if (existingUserData) {
+        throw new Error("This email is already registered. Please try logging in.");
+      }
+      
       await signup(email, password, name, role);
       // No need for additional toast here as it's handled in the signup function
     } catch (err) {
+      console.error("Signup error:", err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
