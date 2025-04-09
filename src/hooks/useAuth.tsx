@@ -151,7 +151,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Sign up the user
+      // First check if user already exists
+      const { data: existingUsers } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .limit(1);
+        
+      if (existingUsers && existingUsers.length > 0) {
+        throw new Error('An account with this email already exists');
+      }
+      
+      // Sign up the user with emailConfirm: false to skip confirmation
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -159,17 +170,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             name,
             role: userRole,
-          }
+          },
+          emailRedirectTo: window.location.origin + '/dashboard',
         }
       });
       
       if (error) throw error;
       
+      if (!data.user) {
+        throw new Error('Failed to create user account');
+      }
+      
       // Create a profile record for the user
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{ 
-          id: data.user?.id, 
+          id: data.user.id, 
           name,
           email, 
           role: userRole,
@@ -179,11 +195,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (profileError) throw profileError;
       
       toast({
-        title: "Account created",
-        description: "Please check your email for verification instructions.",
+        title: "Account created successfully",
+        description: "You can now log in with your new account.",
       });
       
-      navigate('/login');
+      // Auto login the user after successful signup
+      await login(email, password);
+      
     } catch (error: any) {
       toast({
         variant: "destructive",

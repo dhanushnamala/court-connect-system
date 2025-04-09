@@ -44,10 +44,7 @@ const SignUp = () => {
     
     try {
       await signup(email, password, name, role);
-      toast({
-        title: "Account created",
-        description: "Please check your email to verify your account.",
-      });
+      // No need for additional toast here as it's handled in the signup function
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
