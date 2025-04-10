@@ -13,10 +13,13 @@ const AdminCreation = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'admin' | 'judge'>('admin');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const handleCreateUser = async () => {
     try {
+      setIsLoading(true);
+      
       // Validate inputs
       if (!email.trim() || !password.trim() || !name.trim()) {
         throw new Error("All fields are required");
@@ -75,6 +78,8 @@ const AdminCreation = () => {
         title: 'Error',
         description: err instanceof Error ? err.message : 'An unknown error occurred'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -116,7 +121,12 @@ const AdminCreation = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <Button onClick={handleCreateUser}>Create User</Button>
+          <Button 
+            onClick={handleCreateUser}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Creating...' : 'Create User'}
+          </Button>
         </div>
       </CardContent>
     </Card>

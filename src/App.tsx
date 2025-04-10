@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import ContactUs from "./pages/ContactUs";
 import Queries from "./pages/Queries";
 import LearnMore from "./pages/LearnMore";
+import AdminCreation from "./pages/AdminCreation";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,12 @@ const AppRoutes = () => (
     <Route path="/queries" element={
       <AdminRoute>
         <Queries />
+      </AdminRoute>
+    } />
+    
+    <Route path="/admin/create" element={
+      <AdminRoute>
+        <AdminCreation />
       </AdminRoute>
     } />
     

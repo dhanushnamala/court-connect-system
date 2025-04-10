@@ -9,7 +9,116 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          case_number: string
+          client_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          judge_id: string | null
+          lawyer_id: string | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          case_number: string
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          judge_id?: string | null
+          lawyer_id?: string | null
+          status: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          case_number?: string
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          judge_id?: string | null
+          lawyer_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lawyer_requests: {
+        Row: {
+          case_id: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          lawyer_id: string
+          message: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          lawyer_id: string
+          message?: string | null
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          lawyer_id?: string
+          message?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lawyer_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

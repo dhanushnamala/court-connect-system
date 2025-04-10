@@ -47,13 +47,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session) {
         try {
           // Set basic user info from session
+          const userRole = (session.user.user_metadata?.role as UserRole) || 'client';
+          
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || 'User',
-            role: (session.user.user_metadata?.role as UserRole) || 'client',
+            role: userRole,
           });
-          setRole((session.user.user_metadata?.role as UserRole) || 'client');
+          setRole(userRole);
+          
+          // Get profile data from database as a backup
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role, name')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (profileData) {
+            // Update with profile data if available
+            setUser(prev => prev ? {
+              ...prev,
+              name: profileData.name || prev.name,
+              role: profileData.role as UserRole || prev.role
+            } : null);
+            setRole(profileData.role as UserRole || userRole);
+          }
         } catch (error) {
           console.error('Session check error:', error);
         }
@@ -68,13 +87,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          const userRole = (session.user.user_metadata?.role as UserRole) || 'client';
+          
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             name: session.user.user_metadata?.name || 'User',
-            role: (session.user.user_metadata?.role as UserRole) || 'client',
+            role: userRole,
           });
-          setRole((session.user.user_metadata?.role as UserRole) || 'client');
+          setRole(userRole);
+          
+          // Check for profile data in a setTimeout to avoid potential Supabase deadlocks
+          if (session.user.id) {
+            setTimeout(async () => {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('role, name')
+                .eq('id', session.user.id)
+                .single();
+                
+              if (profileData) {
+                setUser(prev => prev ? {
+                  ...prev,
+                  name: profileData.name || prev.name,
+                  role: profileData.role as UserRole || prev.role
+                } : null);
+                setRole(profileData.role as UserRole || userRole);
+              }
+            }, 0);
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setRole(null);
