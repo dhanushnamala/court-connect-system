@@ -13,6 +13,9 @@ import { supabase } from "@/lib/supabase";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DocumentUploadForm from "@/components/documents/DocumentUploadForm";
+import DocumentsList from "@/components/documents/DocumentsList";
 
 const ClientDashboard = () => {
   const { user } = useAuth();
@@ -21,10 +24,12 @@ const ClientDashboard = () => {
   const [availableLawyers, setAvailableLawyers] = useState<any[]>([]);
   const [isCreateCaseOpen, setIsCreateCaseOpen] = useState(false);
   const [isRequestLawyerOpen, setIsRequestLawyerOpen] = useState(false);
+  const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<string | null>(null);
   const [selectedLawyer, setSelectedLawyer] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [lawyerRequests, setLawyerRequests] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const { toast } = useToast();
   
   // New case form state
@@ -67,13 +72,23 @@ const ClientDashboard = () => {
         
         // Fetch available lawyers
         const { data: lawyersData, error: lawyersError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('role', 'lawyer');
+          .from('lawyer_users')
+          .select('*');
           
         if (lawyersError) throw lawyersError;
         if (lawyersData) {
           setAvailableLawyers(lawyersData);
+        }
+        
+        // Fetch documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('uploaded_by', user.id);
+          
+        if (documentsError) throw documentsError;
+        if (documentsData) {
+          setDocuments(documentsData);
         }
         
       } catch (error) {
@@ -209,6 +224,24 @@ const ClientDashboard = () => {
     }
   };
 
+  const refreshDocuments = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('uploaded_by', user.id);
+        
+      if (error) throw error;
+      if (data) {
+        setDocuments(data);
+      }
+    } catch (error) {
+      console.error("Error refreshing documents:", error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome Card */}
@@ -266,144 +299,184 @@ const ClientDashboard = () => {
         </CardContent>
       </Card>
       
-      {/* Cases List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Cases</CardTitle>
-          <CardDescription>Current status of all your legal cases</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {cases.length > 0 ? (
-              cases.map((item) => (
-                <div key={item.id} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        item.status === 'active' ? 'bg-green-100 text-green-800' :
-                        item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        item.status === 'closed' ? 'bg-gray-100 text-gray-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {item.status.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">Filed on {item.filingDate || new Date(item.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 md:mt-0 flex flex-col items-end">
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Attorney: </span>
-                      <span className="font-medium">{lawyers[item.lawyerId]?.name || 'Not assigned'}</span>
-                    </div>
-                    <div className="mt-2 flex space-x-2">
-                      <Link to={`/cases/${item.id}`} className="text-sm text-blue-600 hover:underline">
-                        View Details
-                      </Link>
-                      {!item.lawyerId && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => {
-                            setSelectedCase(item.id);
-                            setIsRequestLawyerOpen(true);
-                          }}
-                        >
-                          Request Lawyer
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-muted-foreground">You don't have any cases yet</p>
-                <Button 
-                  className="mt-4 bg-court-primary hover:bg-court-primary/90"
-                  onClick={() => setIsCreateCaseOpen(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Create Your First Case
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Lawyers */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Legal Team</CardTitle>
-          <CardDescription>Attorneys assigned to your cases</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {Object.values(lawyers).length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {Object.values(lawyers).map((lawyer: any) => (
-                <div key={lawyer.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                    {lawyer.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-medium">{lawyer.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {lawyer.specialization || 'Attorney at Law'}
-                    </p>
-                    <div className="mt-1 flex gap-3">
-                      <p className="text-xs">{lawyer.email}</p>
-                      <p className="text-xs">{lawyer.phone}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-muted-foreground">No attorneys assigned yet</p>
-              <Button 
-                className="mt-4" 
-                variant="outline"
-                onClick={() => setIsRequestLawyerOpen(true)}
-              >
-                Request a Lawyer
-              </Button>
-            </div>
-          )}
-          
-          {/* Lawyer Request Status */}
-          {lawyerRequests.length > 0 && (
-            <div className="mt-6">
-              <h3 className="font-medium mb-4">Lawyer Requests</h3>
-              <div className="space-y-3">
-                {lawyerRequests.map(request => (
-                  <div key={request.id} className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center">
+      <Tabs defaultValue="cases" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="cases">Your Cases</TabsTrigger>
+          <TabsTrigger value="lawyers">Legal Team</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="cases">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Cases</CardTitle>
+              <CardDescription>Current status of all your legal cases</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {cases.length > 0 ? (
+                  cases.map((item) => (
+                    <div key={item.id} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="font-medium">{request.profiles?.name || 'Lawyer'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Case: {cases.find(c => c.id === request.case_id)?.title || 'General Consultation'}
-                        </p>
+                        <h3 className="font-medium">{item.title}</h3>
+                        <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            item.status === 'active' ? 'bg-green-100 text-green-800' :
+                            item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            item.status === 'closed' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {item.status.toUpperCase()}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Filed on {item.filingDate || new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {request.status.toUpperCase()}
-                      </span>
+                      <div className="mt-3 md:mt-0 flex flex-col items-end">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Attorney: </span>
+                          <span className="font-medium">{lawyers[item.lawyerId]?.name || 'Not assigned'}</span>
+                        </div>
+                        <div className="mt-2 flex space-x-2">
+                          <Link to={`/cases/${item.id}`} className="text-sm text-blue-600 hover:underline">
+                            View Details
+                          </Link>
+                          {!item.lawyerId && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => {
+                                setSelectedCase(item.id);
+                                setIsRequestLawyerOpen(true);
+                              }}
+                            >
+                              Request Lawyer
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCase(item.id);
+                              setIsUploadDocumentOpen(true);
+                            }}
+                          >
+                            Upload Document
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    {request.message && (
-                      <p className="mt-2 text-sm border-t pt-2">{request.message}</p>
-                    )}
+                  ))
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground">You don't have any cases yet</p>
+                    <Button 
+                      className="mt-4 bg-court-primary hover:bg-court-primary/90"
+                      onClick={() => setIsCreateCaseOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Create Your First Case
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="lawyers">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Legal Team</CardTitle>
+              <CardDescription>Attorneys assigned to your cases</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Object.values(lawyers).length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Object.values(lawyers).map((lawyer: any) => (
+                    <div key={lawyer.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        {lawyer.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{lawyer.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {lawyer.specialization || 'Attorney at Law'}
+                        </p>
+                        <div className="mt-1 flex gap-3">
+                          <p className="text-xs">{lawyer.email}</p>
+                          <p className="text-xs">{lawyer.phone}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground">No attorneys assigned yet</p>
+                  <Button 
+                    className="mt-4" 
+                    variant="outline"
+                    onClick={() => setIsRequestLawyerOpen(true)}
+                  >
+                    Request a Lawyer
+                  </Button>
+                </div>
+              )}
+              
+              {/* Lawyer Request Status */}
+              {lawyerRequests.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="font-medium mb-4">Lawyer Requests</h3>
+                  <div className="space-y-3">
+                    {lawyerRequests.map(request => (
+                      <div key={request.id} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-medium">{request.profiles?.name || 'Lawyer'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Case: {cases.find(c => c.id === request.case_id)?.title || 'General Consultation'}
+                            </p>
+                          </div>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {request.status.toUpperCase()}
+                          </span>
+                        </div>
+                        {request.message && (
+                          <p className="mt-2 text-sm border-t pt-2">{request.message}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Legal Documents</CardTitle>
+                <CardDescription>Manage and view your case documents</CardDescription>
+              </div>
+              <Button 
+                className="bg-court-primary hover:bg-court-primary/90"
+                onClick={() => setIsUploadDocumentOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Upload Document
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <DocumentsList />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
       {/* Create Case Dialog */}
       <Dialog open={isCreateCaseOpen} onOpenChange={setIsCreateCaseOpen}>
@@ -528,6 +601,47 @@ const ClientDashboard = () => {
               {isSubmitting ? 'Sending...' : 'Send Request'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Upload Document Dialog */}
+      <Dialog open={isUploadDocumentOpen} onOpenChange={setIsUploadDocumentOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription>
+              Add legal document to your case
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {!selectedCase && cases.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="case">Select Case</Label>
+                <Select value={selectedCase || ''} onValueChange={setSelectedCase}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a case" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cases.map(item => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {(selectedCase || cases.length === 0) && (
+              <DocumentUploadForm 
+                caseId={selectedCase || (cases.length > 0 ? cases[0].id : '')} 
+                onSuccess={() => {
+                  setIsUploadDocumentOpen(false);
+                  refreshDocuments();
+                }}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

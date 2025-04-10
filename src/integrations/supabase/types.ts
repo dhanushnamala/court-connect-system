@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       cases: {
         Row: {
           case_number: string
@@ -45,6 +69,116 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      client_users: {
+        Row: {
+          address: string | null
+          contact_number: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_number?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          case_id: string
+          created_at: string | null
+          description: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          status: string
+          title: string
+          updated_at: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string | null
+          description?: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          status: string
+          title: string
+          updated_at?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string | null
+          description?: string | null
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      judge_users: {
+        Row: {
+          court_specialty: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          updated_at: string | null
+          years_of_experience: number | null
+        }
+        Insert: {
+          court_specialty?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          updated_at?: string | null
+          years_of_experience?: number | null
+        }
+        Update: {
+          court_specialty?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+          years_of_experience?: number | null
         }
         Relationships: []
       }
@@ -88,6 +222,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lawyer_users: {
+        Row: {
+          cases_won: number | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          specialization: string | null
+          updated_at: string | null
+          years_of_experience: number | null
+        }
+        Insert: {
+          cases_won?: number | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          specialization?: string | null
+          updated_at?: string | null
+          years_of_experience?: number | null
+        }
+        Update: {
+          cases_won?: number | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          specialization?: string | null
+          updated_at?: string | null
+          years_of_experience?: number | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

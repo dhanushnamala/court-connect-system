@@ -46,7 +46,21 @@ const caseStatusData = [
 const COLORS = ['#3182CE', '#E53E3E', '#38A169', '#D69E2E'];
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState(getCaseStats());
+  const [stats, setStats] = useState({
+    totalCases: 0,
+    activeCases: 0,
+    pendingCases: 0,
+    closedCases: 0,
+    appealedCases: 0,
+    casesByType: {
+      civil: 0,
+      criminal: 0,
+      family: 0,
+      corporate: 0
+    },
+    upcomingHearings: 0
+  });
+  
   const [upcomingHearings, setUpcomingHearings] = useState<(Hearing & { caseTitle: string; judgeName: string })[]>([]);
   const [personnel, setPersonnel] = useState({
     lawyers: getLawyers(),
@@ -61,31 +75,35 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch users by role
-        const fetchUsersByRole = async (role: string) => {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('role', role);
-            
-          if (error) throw error;
-          return data || [];
-        };
+        // Fetch users by role from specific user tables
+        const { data: lawyers, error: lawyersError } = await supabase
+          .from('lawyer_users')
+          .select('*');
+          
+        const { data: judges, error: judgesError } = await supabase
+          .from('judge_users')
+          .select('*');
+          
+        const { data: clients, error: clientsError } = await supabase
+          .from('client_users')
+          .select('*');
+        
+        const { data: admins, error: adminsError } = await supabase
+          .from('admin_users')
+          .select('*');
         
         // Fetch all data in parallel
-        const [lawyers, judges, clients, casesData, requestsData] = await Promise.all([
-          fetchUsersByRole('lawyer'),
-          fetchUsersByRole('judge'),
-          fetchUsersByRole('client'),
+        const [casesData, requestsData, documentsData] = await Promise.all([
           supabase.from('cases').select('*'),
-          supabase.from('lawyer_requests').select('*, profiles:client_id(*), lawyer:lawyer_id(*), cases(*)')
+          supabase.from('lawyer_requests').select('*, profiles:client_id(*), lawyer:lawyer_id(*), cases(*)'),
+          supabase.from('documents').select('*')
         ]);
         
         // Update state with fetched data
         setPersonnel({
-          lawyers: lawyers.length > 0 ? lawyers : getLawyers(),
-          judges: judges.length > 0 ? judges : getJudges(),
-          clients: clients.length > 0 ? clients : getClients()
+          lawyers: lawyers && !lawyersError ? lawyers : getLawyers(),
+          judges: judges && !judgesError ? judges : getJudges(),
+          clients: clients && !clientsError ? clients : getClients()
         });
         
         if (casesData.data) {
@@ -95,12 +113,23 @@ const AdminDashboard = () => {
           const activeCases = casesData.data.filter(c => c.status === 'active').length;
           const pendingCases = casesData.data.filter(c => c.status === 'pending').length;
           const closedCases = casesData.data.filter(c => c.status === 'closed').length;
+          const appealedCases = casesData.data.filter(c => c.status === 'appealed').length;
+          
+          // Count cases by type
+          const casesByType = {
+            civil: casesData.data.filter(c => c.type === 'civil').length || 0,
+            criminal: casesData.data.filter(c => c.type === 'criminal').length || 0,
+            family: casesData.data.filter(c => c.type === 'family').length || 0,
+            corporate: casesData.data.filter(c => c.type === 'corporate').length || 0
+          };
           
           setStats({
             totalCases: casesData.data.length,
             activeCases,
             pendingCases,
             closedCases,
+            appealedCases,
+            casesByType,
             upcomingHearings: 0 // Will be updated when hearings API is available
           });
         }
@@ -229,6 +258,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="users">Users</TabsTrigger>
               <TabsTrigger value="cases">Cases</TabsTrigger>
               <TabsTrigger value="lawyer-requests">Lawyer Requests</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
             
             <TabsContent value="overview" className="space-y-6">
@@ -357,7 +387,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-sm">
                             <p>{lawyer.email}</p>
-                            <p>{lawyer.phone}</p>
+                            <p>{lawyer.years_of_experience ? `${lawyer.years_of_experience} years experience` : ''}</p>
                           </div>
                           <Button variant="outline" size="sm">View Profile</Button>
                         </div>
@@ -377,7 +407,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-sm">
                             <p>{judge.email}</p>
-                            <p>{judge.phone}</p>
+                            <p>{judge.court_specialty || ''}</p>
                           </div>
                           <Button variant="outline" size="sm">View Profile</Button>
                         </div>
@@ -397,7 +427,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-sm">
                             <p>{client.email}</p>
-                            <p>{client.phone}</p>
+                            <p>{client.contact_number || ''}</p>
                           </div>
                           <Button variant="outline" size="sm">View Profile</Button>
                         </div>
@@ -518,6 +548,18 @@ const AdminDashboard = () => {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="documents" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documents</CardTitle>
+                  <CardDescription>Manage all case documents</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DocumentsList />
                 </CardContent>
               </Card>
             </TabsContent>
