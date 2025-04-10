@@ -23,7 +23,7 @@ const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"client" | "lawyer">("client");
+  const [role, setRole] = useState<"client" | "lawyer" | "admin" | "judge">("client");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup, isAuthenticated, isLoading } = useAuth();
@@ -141,7 +141,7 @@ const SignUp = () => {
                 <Label htmlFor="role">I am a</Label>
                 <Select 
                   value={role} 
-                  onValueChange={(value) => setRole(value as "client" | "lawyer")}
+                  onValueChange={(value) => setRole(value as "client" | "lawyer" | "admin" | "judge")}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
@@ -149,11 +149,10 @@ const SignUp = () => {
                   <SelectContent>
                     <SelectItem value="client">Client</SelectItem>
                     <SelectItem value="lawyer">Lawyer</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="judge">Judge</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  Note: Judge and Admin accounts can only be created by administrators.
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
