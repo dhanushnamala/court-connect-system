@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, File, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface Document {
   id: string;
@@ -67,13 +66,13 @@ const DocumentsList = ({ caseId }: DocumentsListProps) => {
       
       // Create download link
       const url = URL.createObjectURL(data);
-      const a = window.document.createElement('a');
+      const a = document.createElement('a');
       a.href = url;
       a.download = document.title;
-      window.document.body.appendChild(a);
+      document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
-      window.document.body.removeChild(a);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading document:', error);
     }

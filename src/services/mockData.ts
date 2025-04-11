@@ -1,4 +1,3 @@
-
 import { format, addDays, subDays, addMonths } from 'date-fns';
 
 // Types
@@ -30,6 +29,8 @@ export interface Hearing {
   status: 'scheduled' | 'completed' | 'cancelled' | 'postponed';
 }
 
+// Update the Person interface to include additional properties that match 
+// the database schema for different user types
 export interface Person {
   id: string;
   name: string;
@@ -38,6 +39,9 @@ export interface Person {
   role: 'lawyer' | 'judge' | 'client';
   specialization?: string;
   imageUrl?: string;
+  years_of_experience?: number;  // Added for lawyers and judges
+  court_specialty?: string;      // Added for judges
+  contact_number?: string;       // Added for clients
 }
 
 // Generate mock data

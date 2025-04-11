@@ -1,3 +1,4 @@
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +44,30 @@ const caseStatusData = [
 
 const COLORS = ['#3182CE', '#E53E3E', '#38A169', '#D69E2E'];
 
+interface LawyerUser {
+  id: string;
+  name: string;
+  email: string;
+  specialization?: string;
+  years_of_experience?: number;
+}
+
+interface JudgeUser {
+  id: string;
+  name: string;
+  email: string;
+  court_specialty?: string;
+  years_of_experience?: number;
+}
+
+interface ClientUser {
+  id: string;
+  name: string;
+  email: string;
+  contact_number?: string;
+  address?: string;
+}
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalCases: 0,
@@ -60,10 +85,14 @@ const AdminDashboard = () => {
   });
   
   const [upcomingHearings, setUpcomingHearings] = useState<(Hearing & { caseTitle: string; judgeName: string })[]>([]);
-  const [personnel, setPersonnel] = useState({
-    lawyers: getLawyers(),
-    judges: getJudges(),
-    clients: getClients()
+  const [personnel, setPersonnel] = useState<{
+    lawyers: LawyerUser[];
+    judges: JudgeUser[];
+    clients: ClientUser[];
+  }>({
+    lawyers: [],
+    judges: [],
+    clients: []
   });
   const [cases, setCases] = useState<any[]>([]);
   const [lawyerRequests, setLawyerRequests] = useState<any[]>([]);
@@ -96,9 +125,9 @@ const AdminDashboard = () => {
         ]);
         
         setPersonnel({
-          lawyers: lawyers && !lawyersError ? lawyers : getLawyers(),
-          judges: judges && !judgesError ? judges : getJudges(),
-          clients: clients && !clientsError ? clients : getClients()
+          lawyers: lawyers && !lawyersError ? lawyers : getLawyers() as unknown as LawyerUser[],
+          judges: judges && !judgesError ? judges : getJudges() as unknown as JudgeUser[],
+          clients: clients && !clientsError ? clients : getClients() as unknown as ClientUser[]
         });
         
         if (casesData.data) {

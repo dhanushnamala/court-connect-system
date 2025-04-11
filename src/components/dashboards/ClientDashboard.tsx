@@ -1,7 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Calendar, FileText, UserCheck, Plus } from "lucide-react";
-import { getCasesByClient, getPersonById, Case } from "@/services/mockData";
+import { getCasesByClient, getPersonById } from "@/services/mockData";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,24 @@ import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUploadForm from "@/components/documents/DocumentUploadForm";
 import DocumentsList from "@/components/documents/DocumentsList";
+
+// Interface to match the database structure
+interface Case {
+  id: string;
+  case_number?: string;
+  caseNumber?: string;
+  title: string;
+  description: string;
+  status: string;
+  lawyer_id?: string;
+  lawyerId?: string;
+  client_id?: string;
+  clientId?: string;
+  judge_id?: string;
+  judgeId?: string;
+  filingDate?: string;
+  created_at?: string;
+}
 
 const ClientDashboard = () => {
   const { user } = useAuth();
@@ -93,9 +112,13 @@ const ClientDashboard = () => {
       
       const lawyerDetails: {[key: string]: any} = {};
       cases.forEach(c => {
-        const lawyer = getPersonById(c.lawyerId, 'lawyer');
-        if (lawyer) {
-          lawyerDetails[c.lawyerId] = lawyer;
+        // Check for both lawyerId and lawyer_id
+        const lawyerId = c.lawyerId || c.lawyer_id;
+        if (lawyerId) {
+          const lawyer = getPersonById(lawyerId, 'lawyer');
+          if (lawyer) {
+            lawyerDetails[lawyerId] = lawyer;
+          }
         }
       });
       
@@ -313,19 +336,24 @@ const ClientDashboard = () => {
                           }`}>
                             {item.status.toUpperCase()}
                           </span>
-                          <span className="text-xs text-muted-foreground">Filed on {item.filingDate || (item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            Filed on {item.filingDate || 
+                              (item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A')}
+                          </span>
                         </div>
                       </div>
                       <div className="mt-3 md:mt-0 flex flex-col items-end">
                         <div className="text-sm">
                           <span className="text-muted-foreground">Attorney: </span>
-                          <span className="font-medium">{lawyers[item.lawyerId]?.name || 'Not assigned'}</span>
+                          <span className="font-medium">
+                            {lawyers[item.lawyerId || item.lawyer_id || '']?.name || 'Not assigned'}
+                          </span>
                         </div>
                         <div className="mt-2 flex space-x-2">
                           <Link to={`/cases/${item.id}`} className="text-sm text-blue-600 hover:underline">
                             View Details
                           </Link>
-                          {!item.lawyerId && (
+                          {!(item.lawyerId || item.lawyer_id) && (
                             <Button 
                               variant="outline" 
                               size="sm" 
