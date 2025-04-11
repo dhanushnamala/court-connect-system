@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Calendar, FileText, UserCheck, Plus } from "lucide-react";
@@ -32,7 +31,6 @@ const ClientDashboard = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const { toast } = useToast();
   
-  // New case form state
   const [caseTitle, setCaseTitle] = useState('');
   const [caseDescription, setCaseDescription] = useState('');
   const [caseType, setCaseType] = useState<string>('');
@@ -42,7 +40,6 @@ const ClientDashboard = () => {
     const fetchData = async () => {
       if (!user) return;
       
-      // Fetch cases from Supabase if available, otherwise use mock data
       try {
         const { data: casesData, error: casesError } = await supabase
           .from('cases')
@@ -54,12 +51,10 @@ const ClientDashboard = () => {
         if (casesData && casesData.length > 0) {
           setCases(casesData);
         } else {
-          // Fallback to mock data if no cases in database
           const clientCases = getCasesByClient(user.id || '2');
           setCases(clientCases);
         }
         
-        // Fetch lawyer requests
         const { data: requestsData, error: requestsError } = await supabase
           .from('lawyer_requests')
           .select('*, profiles:lawyer_id(*)')
@@ -70,7 +65,6 @@ const ClientDashboard = () => {
           setLawyerRequests(requestsData);
         }
         
-        // Fetch available lawyers
         const { data: lawyersData, error: lawyersError } = await supabase
           .from('lawyer_users')
           .select('*');
@@ -80,7 +74,6 @@ const ClientDashboard = () => {
           setAvailableLawyers(lawyersData);
         }
         
-        // Fetch documents
         const { data: documentsData, error: documentsError } = await supabase
           .from('documents')
           .select('*')
@@ -94,12 +87,10 @@ const ClientDashboard = () => {
       } catch (error) {
         console.error("Error fetching data:", error);
         
-        // Fallback to mock data
         const clientCases = getCasesByClient(user.id || '2');
         setCases(clientCases);
       }
       
-      // Get lawyer details for each case (from mock data for now)
       const lawyerDetails: {[key: string]: any} = {};
       cases.forEach(c => {
         const lawyer = getPersonById(c.lawyerId, 'lawyer');
@@ -129,10 +120,8 @@ const ClientDashboard = () => {
     setIsSubmitting(true);
     
     try {
-      // Generate a unique case number
       const caseNumber = `CCS-${Date.now().toString().slice(-6)}`;
       
-      // Insert case into database
       const { data, error } = await supabase
         .from('cases')
         .insert([{
@@ -148,7 +137,6 @@ const ClientDashboard = () => {
       if (error) throw error;
       
       if (data) {
-        // Add case to state
         setCases(prev => [...prev, data[0]]);
         
         toast({
@@ -156,7 +144,6 @@ const ClientDashboard = () => {
           description: "Your case has been successfully created"
         });
         
-        // Reset form and close dialog
         setCaseTitle('');
         setCaseDescription('');
         setCaseType('');
@@ -198,7 +185,6 @@ const ClientDashboard = () => {
         description: "Your request has been sent to the lawyer"
       });
       
-      // Refresh lawyer requests
       const { data: requestsData } = await supabase
         .from('lawyer_requests')
         .select('*, profiles:lawyer_id(*)')
@@ -208,7 +194,6 @@ const ClientDashboard = () => {
         setLawyerRequests(requestsData);
       }
       
-      // Reset form and close dialog
       setSelectedLawyer(null);
       setRequestMessage('');
       setIsRequestLawyerOpen(false);
@@ -244,7 +229,6 @@ const ClientDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Card */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -319,7 +303,7 @@ const ClientDashboard = () => {
                     <div key={item.id} className="flex flex-col md:flex-row justify-between p-4 border rounded-lg">
                       <div>
                         <h3 className="font-medium">{item.title}</h3>
-                        <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number}</p>
+                        <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number || 'N/A'}</p>
                         <div className="mt-2 flex items-center gap-2">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                             item.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -329,7 +313,7 @@ const ClientDashboard = () => {
                           }`}>
                             {item.status.toUpperCase()}
                           </span>
-                          <span className="text-xs text-muted-foreground">Filed on {item.filingDate || new Date(item.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-muted-foreground">Filed on {item.filingDate || (item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A')}</span>
                         </div>
                       </div>
                       <div className="mt-3 md:mt-0 flex flex-col items-end">
@@ -423,7 +407,6 @@ const ClientDashboard = () => {
                 </div>
               )}
               
-              {/* Lawyer Request Status */}
               {lawyerRequests.length > 0 && (
                 <div className="mt-6">
                   <h3 className="font-medium mb-4">Lawyer Requests</h3>
@@ -478,7 +461,6 @@ const ClientDashboard = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Create Case Dialog */}
       <Dialog open={isCreateCaseOpen} onOpenChange={setIsCreateCaseOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -541,7 +523,6 @@ const ClientDashboard = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Request Lawyer Dialog */}
       <Dialog open={isRequestLawyerOpen} onOpenChange={setIsRequestLawyerOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -604,7 +585,6 @@ const ClientDashboard = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Upload Document Dialog */}
       <Dialog open={isUploadDocumentOpen} onOpenChange={setIsUploadDocumentOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

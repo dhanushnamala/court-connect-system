@@ -1,4 +1,3 @@
-
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,8 +25,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import AdminCreation from '@/pages/AdminCreation';
+import DocumentsList from "@/components/documents/DocumentsList";
 
-// Bar chart data
 const caseTypeData = [
   { name: 'Criminal', value: 2 },
   { name: 'Civil', value: 2 },
@@ -35,7 +34,6 @@ const caseTypeData = [
   { name: 'Corporate', value: 1 },
 ];
 
-// Pie chart data
 const caseStatusData = [
   { name: 'Active', value: 2 },
   { name: 'Pending', value: 2 },
@@ -75,7 +73,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch users by role from specific user tables
         const { data: lawyers, error: lawyersError } = await supabase
           .from('lawyer_users')
           .select('*');
@@ -92,14 +89,12 @@ const AdminDashboard = () => {
           .from('admin_users')
           .select('*');
         
-        // Fetch all data in parallel
         const [casesData, requestsData, documentsData] = await Promise.all([
           supabase.from('cases').select('*'),
           supabase.from('lawyer_requests').select('*, profiles:client_id(*), lawyer:lawyer_id(*), cases(*)'),
           supabase.from('documents').select('*')
         ]);
         
-        // Update state with fetched data
         setPersonnel({
           lawyers: lawyers && !lawyersError ? lawyers : getLawyers(),
           judges: judges && !judgesError ? judges : getJudges(),
@@ -109,13 +104,11 @@ const AdminDashboard = () => {
         if (casesData.data) {
           setCases(casesData.data);
           
-          // Calculate stats from actual data
           const activeCases = casesData.data.filter(c => c.status === 'active').length;
           const pendingCases = casesData.data.filter(c => c.status === 'pending').length;
           const closedCases = casesData.data.filter(c => c.status === 'closed').length;
           const appealedCases = casesData.data.filter(c => c.status === 'appealed').length;
           
-          // Count cases by type
           const casesByType = {
             civil: casesData.data.filter(c => c.type === 'civil').length || 0,
             criminal: casesData.data.filter(c => c.type === 'criminal').length || 0,
@@ -130,7 +123,7 @@ const AdminDashboard = () => {
             closedCases,
             appealedCases,
             casesByType,
-            upcomingHearings: 0 // Will be updated when hearings API is available
+            upcomingHearings: 0
           });
         }
         
@@ -138,7 +131,6 @@ const AdminDashboard = () => {
           setLawyerRequests(requestsData.data);
         }
         
-        // Get upcoming hearings with additional info from mock data for now
         const hearings = getUpcomingHearings().map(hearing => {
           const relatedCase = getCaseById(hearing.caseId);
           const judge = relatedCase ? getPersonById(relatedCase.judgeId, 'judge') : undefined;
@@ -154,7 +146,6 @@ const AdminDashboard = () => {
         
       } catch (error) {
         console.error("Error fetching data:", error);
-        // Fallback to mock data if API calls fail
       }
     };
     
@@ -163,7 +154,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* System Overview Heading */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">System Overview</h2>
@@ -179,7 +169,6 @@ const AdminDashboard = () => {
         </Button>
       </div>
 
-      {/* Show admin creation form if button clicked */}
       {isShowingUserCreation && (
         <div>
           <Button 
@@ -195,7 +184,6 @@ const AdminDashboard = () => {
 
       {!isShowingUserCreation && (
         <>
-          {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -262,7 +250,6 @@ const AdminDashboard = () => {
             </TabsList>
             
             <TabsContent value="overview" className="space-y-6">
-              {/* Charts */}
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader>
@@ -316,7 +303,6 @@ const AdminDashboard = () => {
                 </Card>
               </div>
               
-              {/* Upcoming Hearings */}
               <Card>
                 <CardHeader>
                   <CardTitle>Upcoming Hearings</CardTitle>
@@ -354,7 +340,6 @@ const AdminDashboard = () => {
             </TabsContent>
             
             <TabsContent value="users" className="space-y-6">
-              {/* User Management */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
@@ -387,7 +372,7 @@ const AdminDashboard = () => {
                           </div>
                           <div className="text-sm">
                             <p>{lawyer.email}</p>
-                            <p>{lawyer.years_of_experience ? `${lawyer.years_of_experience} years experience` : ''}</p>
+                            <p>{lawyer.years_of_experience !== undefined ? `${lawyer.years_of_experience} years experience` : ''}</p>
                           </div>
                           <Button variant="outline" size="sm">View Profile</Button>
                         </div>
