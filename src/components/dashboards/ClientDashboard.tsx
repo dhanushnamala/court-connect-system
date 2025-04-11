@@ -35,11 +35,19 @@ interface Case {
   created_at?: string;
 }
 
+interface LawyerProfile {
+  id: string;
+  name: string;
+  email: string;
+  specialization?: string;
+  years_of_experience?: number;
+}
+
 const ClientDashboard = () => {
   const { user } = useAuth();
   const [cases, setCases] = useState<Case[]>([]);
   const [lawyers, setLawyers] = useState<{[key: string]: any}>({});
-  const [availableLawyers, setAvailableLawyers] = useState<any[]>([]);
+  const [availableLawyers, setAvailableLawyers] = useState<LawyerProfile[]>([]);
   const [isCreateCaseOpen, setIsCreateCaseOpen] = useState(false);
   const [isRequestLawyerOpen, setIsRequestLawyerOpen] = useState(false);
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
@@ -60,56 +68,78 @@ const ClientDashboard = () => {
       if (!user) return;
       
       try {
+        console.log("Fetching cases for user:", user.id);
+        
+        // Fetch cases from Supabase
         const { data: casesData, error: casesError } = await supabase
           .from('cases')
           .select('*')
           .eq('client_id', user.id);
           
-        if (casesError) throw casesError;
+        if (casesError) {
+          console.error("Error fetching cases:", casesError);
+          throw casesError;
+        }
+        
+        console.log("Cases data from database:", casesData);
         
         if (casesData && casesData.length > 0) {
           setCases(casesData);
         } else {
-          const clientCases = getCasesByClient(user.id || '2');
+          // Fallback to mock data if no cases in database
+          console.log("No cases found in database, using mock data");
+          const clientCases = getCasesByClient(user.id);
           setCases(clientCases);
         }
         
+        // Fetch lawyer requests
         const { data: requestsData, error: requestsError } = await supabase
           .from('lawyer_requests')
-          .select('*, profiles:lawyer_id(*)')
+          .select('*, profiles!lawyer_id(*)')
           .eq('client_id', user.id);
           
-        if (requestsError) throw requestsError;
-        if (requestsData) {
+        if (requestsError) {
+          console.error("Error fetching lawyer requests:", requestsError);
+          // Continue with other data fetching despite this error
+        } else if (requestsData) {
+          console.log("Lawyer requests from database:", requestsData);
           setLawyerRequests(requestsData);
         }
         
+        // Fetch available lawyers
         const { data: lawyersData, error: lawyersError } = await supabase
-          .from('lawyer_users')
-          .select('*');
+          .from('profiles')
+          .select('*')
+          .eq('role', 'lawyer');
           
-        if (lawyersError) throw lawyersError;
-        if (lawyersData) {
+        if (lawyersError) {
+          console.error("Error fetching lawyers:", lawyersError);
+        } else if (lawyersData) {
+          console.log("Available lawyers from database:", lawyersData);
           setAvailableLawyers(lawyersData);
         }
         
+        // Fetch documents
         const { data: documentsData, error: documentsError } = await supabase
           .from('documents')
           .select('*')
           .eq('uploaded_by', user.id);
           
-        if (documentsError) throw documentsError;
-        if (documentsData) {
+        if (documentsError) {
+          console.error("Error fetching documents:", documentsError);
+        } else if (documentsData) {
           setDocuments(documentsData);
         }
         
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error in fetchData:", error);
         
-        const clientCases = getCasesByClient(user.id || '2');
+        // Fallback to mock data
+        const clientCases = getCasesByClient(user.id);
         setCases(clientCases);
       }
       
+      // Process lawyer details for existing cases
       const lawyerDetails: {[key: string]: any} = {};
       cases.forEach(c => {
         // Check for both lawyerId and lawyer_id
@@ -153,7 +183,7 @@ const ClientDashboard = () => {
           description: caseDescription,
           status: 'pending',
           client_id: user.id,
-          created_at: new Date()
+          created_at: new Date().toISOString()
         }])
         .select();
         
@@ -198,7 +228,7 @@ const ClientDashboard = () => {
           case_id: selectedCase,
           status: 'pending',
           message: requestMessage,
-          created_at: new Date()
+          created_at: new Date().toISOString()
         }]);
         
       if (error) throw error;
@@ -208,9 +238,10 @@ const ClientDashboard = () => {
         description: "Your request has been sent to the lawyer"
       });
       
+      // Refresh lawyer requests
       const { data: requestsData } = await supabase
         .from('lawyer_requests')
-        .select('*, profiles:lawyer_id(*)')
+        .select('*, profiles!lawyer_id(*)')
         .eq('client_id', user.id);
         
       if (requestsData) {

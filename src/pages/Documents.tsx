@@ -4,17 +4,46 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileUp } from "lucide-react";
 import DocumentsList from "@/components/documents/DocumentsList";
-import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useState, useEffect } from "react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import DocumentUploadForm from "@/components/documents/DocumentUploadForm";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 
 const Documents = () => {
-  const [refreshList, setRefreshList] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
   const { user } = useAuth();
+  const [cases, setCases] = useState<any[]>([]);
+  const [selectedCase, setSelectedCase] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCases = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('cases')
+          .select('id, title, case_number')
+          .eq('client_id', user.id);
+          
+        if (error) throw error;
+        
+        if (data) {
+          setCases(data);
+          if (data.length > 0 && !selectedCase) {
+            setSelectedCase(data[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching cases:", error);
+      }
+    };
+    
+    fetchCases();
+  }, [user, selectedCase]);
 
   const handleUploadSuccess = () => {
-    setRefreshList(prev => !prev);
+    setRefreshTrigger(prev => !prev);
   };
 
   return (
@@ -36,11 +65,14 @@ const Documents = () => {
             <SheetContent>
               <SheetHeader>
                 <SheetTitle>Upload Document</SheetTitle>
+                <SheetDescription>
+                  Upload a document for one of your cases
+                </SheetDescription>
               </SheetHeader>
               {user && (
                 <div className="mt-6">
                   <DocumentUploadForm 
-                    caseId={user.id} 
+                    caseId={selectedCase || user.id} 
                     onSuccess={handleUploadSuccess} 
                   />
                 </div>
@@ -57,7 +89,7 @@ const Documents = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DocumentsList />
+            <DocumentsList key={refreshTrigger ? 'refresh' : 'initial'} />
           </CardContent>
         </Card>
       </div>
