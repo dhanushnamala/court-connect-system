@@ -69,7 +69,6 @@ const SignUp = () => {
       // Pass all validated data to signup function
       await signup(email, password, name, role);
       
-      // No need for additional toast here as it's handled in the signup function
     } catch (err) {
       console.error("Signup error:", err);
       if (err instanceof Error) {

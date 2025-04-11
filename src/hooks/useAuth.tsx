@@ -165,13 +165,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log(`Attempting to sign up user with role: ${userRole}`);
       
-      // Try to sign up the user - only store minimal information in auth metadata
+      // Check for existing email to provide a better error message
+      const { data: existingUserData, error: existingUserError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+        
+      if (existingUserData) {
+        throw new Error("An account with this email already exists");
+      }
+      
+      if (existingUserError && existingUserError.code !== 'PGRST116') {
+        console.error("Error checking existing user:", existingUserError);
+      }
+      
+      // Try to sign up the user with clearer metadata
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name,
+            name: name.trim(),
             role: userRole,
           },
           emailRedirectTo: `${window.location.origin}/dashboard`,
@@ -181,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error("Signup error from auth:", error);
         
-        // Handle duplicate email error
+        // Handle duplicate email error more specifically
         if (error.message.includes("email already registered")) {
           throw new Error("An account with this email already exists");
         }
@@ -195,8 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log("Auth user created successfully with ID:", data.user.id);
       
-      // The trigger function we created will handle creating the profile and role-specific records
-      // We don't need to manually create them here anymore
+      // The database trigger function will handle creating the profile and role-specific records
       
       // Auto sign in after signup
       console.log("Attempting to auto sign in user after signup");
