@@ -163,7 +163,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Sign up without email confirmation
+      console.log(`Attempting to sign up user with role: ${userRole}`);
+      
+      // Sign up the user - only store minimal information in auth metadata
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -176,13 +178,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Signup error from auth:", error);
+        throw error;
+      }
       
       if (!data.user) {
         throw new Error('Failed to create user account');
       }
       
-      // Create profile record manually
+      console.log("User created successfully, now creating profile");
+      
+      // Create profile record manually after auth user is created
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{ 
@@ -190,15 +197,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name,
           email, 
           role: userRole,
-          created_at: new Date() 
+          created_at: new Date().toISOString()
         }]);
       
       if (profileError) {
         console.error('Error creating profile:', profileError);
-        // Continue - we'll use auth metadata instead
+        // We'll log the error but continue - will rely on auth metadata
       }
       
-      // Auto sign in after signup
+      // Auto sign in after signup - this ensures session is properly established
+      console.log("Attempting to auto sign in user after signup");
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -208,6 +216,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Auto sign-in error:", signInError);
         throw new Error('Account created, but failed to automatically sign in.');
       }
+      
+      console.log("Sign in successful, navigating to dashboard");
       
       toast({
         title: "Account created successfully",
