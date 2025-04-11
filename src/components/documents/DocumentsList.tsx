@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, File, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-interface Document {
+interface DocumentItem {
   id: string;
   title: string;
   description: string;
@@ -22,7 +22,7 @@ interface DocumentsListProps {
 }
 
 const DocumentsList = ({ caseId }: DocumentsListProps) => {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
@@ -56,7 +56,7 @@ const DocumentsList = ({ caseId }: DocumentsListProps) => {
     fetchDocuments();
   }, [user, caseId]);
 
-  const handleDownload = async (document: Document) => {
+  const handleDownload = async (document: DocumentItem) => {
     try {
       const { data, error } = await supabase.storage
         .from('documents')
@@ -64,15 +64,15 @@ const DocumentsList = ({ caseId }: DocumentsListProps) => {
       
       if (error) throw error;
       
-      // Create download link
+      // Create download link using the window.document object
       const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = document.title;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading document:', error);
     }
