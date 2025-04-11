@@ -28,6 +28,11 @@ const SignUp = () => {
   const { signup, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -41,6 +46,14 @@ const SignUp = () => {
       
       if (!email.trim()) {
         throw new Error("Email is required");
+      }
+      
+      if (!validateEmail(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+      
+      if (!password) {
+        throw new Error("Password is required");
       }
       
       if (password !== confirmPassword) {

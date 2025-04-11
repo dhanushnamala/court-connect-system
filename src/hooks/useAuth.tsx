@@ -165,6 +165,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log(`Attempting to sign up user with role: ${userRole}`);
       
+      // First check if user with this email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error checking existing user:", checkError);
+      }
+      
+      if (existingUser) {
+        throw new Error("An account with this email already exists");
+      }
+      
       // Sign up the user - only store minimal information in auth metadata
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -203,6 +218,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (profileError) {
         console.error('Error creating profile:', profileError);
         // We'll log the error but continue - will rely on auth metadata
+      }
+      
+      // Create role-specific record
+      let roleTableError = null;
+      
+      if (userRole === 'admin') {
+        const { error: adminError } = await supabase
+          .from('admin_users')
+          .insert([{
+            id: data.user.id,
+            name,
+            email
+          }]);
+        roleTableError = adminError;
+      } else if (userRole === 'lawyer') {
+        const { error: lawyerError } = await supabase
+          .from('lawyer_users')
+          .insert([{
+            id: data.user.id,
+            name,
+            email
+          }]);
+        roleTableError = lawyerError;
+      } else if (userRole === 'judge') {
+        const { error: judgeError } = await supabase
+          .from('judge_users')
+          .insert([{
+            id: data.user.id,
+            name,
+            email
+          }]);
+        roleTableError = judgeError;
+      } else if (userRole === 'client') {
+        const { error: clientError } = await supabase
+          .from('client_users')
+          .insert([{
+            id: data.user.id,
+            name,
+            email
+          }]);
+        roleTableError = clientError;
+      }
+      
+      if (roleTableError) {
+        console.error(`Error creating ${userRole} record:`, roleTableError);
+        // Continue anyway - the auth and profiles entries will work
       }
       
       // Auto sign in after signup - this ensures session is properly established
