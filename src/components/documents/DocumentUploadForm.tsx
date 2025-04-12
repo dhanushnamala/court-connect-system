@@ -1,18 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureDocumentsBucket } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { FileText } from "lucide-react";
 
@@ -28,6 +21,11 @@ const DocumentUploadForm = ({ caseId, onSuccess }: DocumentUploadFormProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Ensure documents bucket exists when component mounts
+  useEffect(() => {
+    ensureDocumentsBucket();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -59,16 +57,26 @@ const DocumentUploadForm = ({ caseId, onSuccess }: DocumentUploadFormProps) => {
     setIsUploading(true);
     
     try {
+      // Ensure bucket exists before upload
+      await ensureDocumentsBucket();
+      
       // 1. Upload file to Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `${caseId}/${fileName}`;
       
-      const { error: uploadError } = await supabase.storage
+      console.log("Attempting to upload to documents bucket at path:", filePath);
+      
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('documents')
         .upload(filePath, file);
       
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        throw new Error(`File upload failed: ${uploadError.message}`);
+      }
+      
+      console.log("File uploaded successfully, creating database record");
       
       // 2. Create document record in database
       const { error: dbError } = await supabase
@@ -84,7 +92,10 @@ const DocumentUploadForm = ({ caseId, onSuccess }: DocumentUploadFormProps) => {
           status: 'pending'
         });
       
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database insert error:", dbError);
+        throw new Error(`Database record creation failed: ${dbError.message}`);
+      }
       
       toast({
         title: "Document Uploaded",

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,29 +27,52 @@ const LawyerDashboard = () => {
       if (!user) return;
       
       try {
-        // Fetch cases from Supabase if available
+        console.log("Fetching data for lawyer:", user.id);
+        
+        // Fetch cases from Supabase
         const { data: casesData, error: casesError } = await supabase
           .from('cases')
           .select('*')
           .eq('lawyer_id', user.id);
           
-        if (casesError) throw casesError;
+        if (casesError) {
+          console.error("Error fetching cases:", casesError);
+          throw casesError;
+        }
         
         if (casesData && casesData.length > 0) {
+          console.log("Cases data from database:", casesData);
           setCases(casesData);
         } else {
           // Fallback to mock data
+          console.log("No cases found in database, using mock data");
           const lawyerCases = getCasesByLawyer(user.id || '1');
           setCases(lawyerCases);
         }
         
-        // Fetch lawyer requests
+        // Fetch lawyer requests - fixed query to avoid the join error
         const { data: requestsData, error: requestsError } = await supabase
           .from('lawyer_requests')
-          .select('*, profiles:client_id(*), cases(*)')
+          .select(`
+            id,
+            client_id,
+            lawyer_id,
+            case_id,
+            status,
+            message,
+            created_at,
+            updated_at,
+            profiles:client_id (id, name, email, role),
+            cases (*)
+          `)
           .eq('lawyer_id', user.id);
           
-        if (requestsError) throw requestsError;
+        if (requestsError) {
+          console.error("Error fetching lawyer requests:", requestsError);
+          throw requestsError;
+        }
+        
+        console.log("Lawyer requests data:", requestsData);
         
         if (requestsData) {
           setLawyerRequests(requestsData);
@@ -95,7 +117,6 @@ const LawyerDashboard = () => {
     fetchData();
   }, [user]);
 
-  // Count cases by status
   const activeCount = cases.filter(c => c.status === 'active').length;
   const pendingCount = cases.filter(c => c.status === 'pending').length;
   const closedCount = cases.filter(c => c.status === 'closed').length;
@@ -175,7 +196,6 @@ const LawyerDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -234,7 +254,6 @@ const LawyerDashboard = () => {
         </Card>
       </div>
 
-      {/* Client Requests */}
       <Card>
         <CardHeader>
           <CardTitle>Client Requests</CardTitle>
@@ -243,11 +262,13 @@ const LawyerDashboard = () => {
         <CardContent>
           {lawyerRequests.length > 0 ? (
             <div className="space-y-4">
-              {lawyerRequests.map(request => (
+              {lawyerRequests.map((request) => (
                 <div key={request.id} className="p-4 border rounded-lg">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium">{request.profiles?.name || 'Client'}</h3>
+                      <h3 className="font-medium">
+                        {request.profiles?.name || 'Client'}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         Case: {request.cases?.title || 'General Consultation'}
                       </p>
@@ -303,7 +324,6 @@ const LawyerDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Upcoming Hearings */}
       <Card>
         <CardHeader>
           <CardTitle>Upcoming Hearings</CardTitle>
@@ -342,7 +362,6 @@ const LawyerDashboard = () => {
         </CardContent>
       </Card>
       
-      {/* Case List */}
       <Card>
         <CardHeader>
           <CardTitle>Your Case Load</CardTitle>
@@ -350,40 +369,45 @@ const LawyerDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {cases.map((item) => (
-              <div key={item.id} className="p-4 border rounded-lg hover:border-primary transition-colors">
-                <div className="flex justify-between">
-                  <div>
-                    <h3 className="font-medium">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number}</p>
+            {cases.length > 0 ? (
+              cases.map((item) => (
+                <div key={item.id} className="p-4 border rounded-lg hover:border-primary transition-colors">
+                  <div className="flex justify-between">
+                    <div>
+                      <h3 className="font-medium">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground">Case #{item.caseNumber || item.case_number}</p>
+                    </div>
+                    <Badge className={
+                      item.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                      item.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' :
+                      item.status === 'closed' ? 'bg-gray-100 text-gray-800 hover:bg-gray-100' :
+                      'bg-red-100 text-red-800 hover:bg-red-100'
+                    }>
+                      {item.status.toUpperCase()}
+                    </Badge>
                   </div>
-                  <Badge className={
-                    item.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' :
-                    item.status === 'closed' ? 'bg-gray-100 text-gray-800 hover:bg-gray-100' :
-                    'bg-red-100 text-red-800 hover:bg-red-100'
-                  }>
-                    {item.status.toUpperCase()}
-                  </Badge>
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm">{item.description}</p>
-                  <div className="mt-2 flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">
-                      Filed: {item.filingDate || new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                    <Link to={`/cases/${item.id}`} className="text-sm text-blue-600 hover:underline">
-                      View Details
-                    </Link>
+                  <div className="mt-2">
+                    <p className="text-sm">{item.description}</p>
+                    <div className="mt-2 flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">
+                        Filed: {item.filingDate || new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                      <Link to={`/cases/${item.id}`} className="text-sm text-blue-600 hover:underline">
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-muted-foreground">No assigned cases yet</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
       
-      {/* Response Dialog */}
       <Dialog open={isResponseDialogOpen} onOpenChange={setIsResponseDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

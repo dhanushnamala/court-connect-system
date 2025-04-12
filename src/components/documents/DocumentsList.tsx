@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, ensureDocumentsBucket } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, File, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DocumentItem {
   id: string;
@@ -25,8 +26,12 @@ const DocumentsList = ({ caseId }: DocumentsListProps) => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
+    // Ensure documents bucket exists
+    ensureDocumentsBucket();
+    
     const fetchDocuments = async () => {
       if (!user) return;
       
@@ -43,38 +48,65 @@ const DocumentsList = ({ caseId }: DocumentsListProps) => {
         
         const { data, error } = await query.order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching documents:', error);
+          throw error;
+        }
         
+        console.log("Documents data:", data);
         setDocuments(data || []);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching documents:', error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load documents",
+          description: error.message || "Could not retrieve documents"
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchDocuments();
-  }, [user, caseId]);
+  }, [user, caseId, toast]);
 
   const handleDownload = async (document: DocumentItem) => {
     try {
+      // Ensure documents bucket exists before download
+      await ensureDocumentsBucket();
+      
+      console.log("Attempting to download file from path:", document.file_path);
+      
       const { data, error } = await supabase.storage
         .from('documents')
         .download(document.file_path);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error downloading document:', error);
+        throw error;
+      }
       
       // Create download link using the window.document object
       const url = URL.createObjectURL(data);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = document.title;
+      a.download = document.title || 'document';
       window.document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
       window.document.body.removeChild(a);
-    } catch (error) {
+      
+      toast({
+        title: "Download Started",
+        description: "Your document download has begun"
+      });
+    } catch (error: any) {
       console.error('Error downloading document:', error);
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: error.message || "Failed to download document"
+      });
     }
   };
 
