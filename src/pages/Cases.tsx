@@ -1,233 +1,192 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { getCases, getCasesByClient, getCasesByLawyer, getCasesByJudge, Case, CaseStatus, CaseType, getPersonById } from "@/services/mockData";
-import { Search, Plus, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Calendar, 
+  Clock, 
+  FileText, 
+  Filter, 
+  Search, 
+  User, 
+  AlertCircle, 
+  CheckCircle, 
+  Clock4, 
+  Plus 
+} from "lucide-react";
+import { format } from "date-fns";
 
 const Cases = () => {
+  const { user } = useAuth();
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<CaseType | "all">("all");
-  const [filteredCases, setFilteredCases] = useState<Case[]>([]);
-  const { user, role } = useAuth();
-  
-  useEffect(() => {
-    let userCases: Case[] = [];
-    
-    // Get cases based on the user's role
-    if (role === 'admin') {
-      // Admins see all cases
-      userCases = getCases();
-    } else if (role === 'client' && user) {
-      // Clients only see their own cases
-      userCases = getCasesByClient(user.id);
-    } else if (role === 'lawyer' && user) {
-      // Lawyers only see cases they're assigned to
-      userCases = getCasesByLawyer(user.id);
-    } else if (role === 'judge' && user) {
-      // Judges only see cases they're presiding over
-      userCases = getCasesByJudge(user.id);
-    }
-    
-    // Apply filters
-    const filtered = userCases.filter(c => {
-      const matchesSearch = c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           c.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-      const matchesType = typeFilter === "all" || c.type === typeFilter;
-      
-      return matchesSearch && matchesStatus && matchesType;
-    });
-    
-    setFilteredCases(filtered);
-  }, [user, role, searchTerm, statusFilter, typeFilter]);
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Status badge styling
-  const getStatusStyle = (status: CaseStatus) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800 hover:bg-green-100";
-      case "pending":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100";
-      case "closed":
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-      case "appealed":
-        return "bg-amber-100 text-amber-800 hover:bg-amber-100";
-      default:
-        return "";
+  const fetchCases = async () => {
+    let query = supabase.from("cases").select("*");
+
+    // Filter cases based on user role
+    if (user.role === "client") {
+      query = query.eq("client_id", user.id);
+    } else if (user.role === "lawyer") {
+      query = query.eq("lawyer_id", user.id);
+    } else if (user.role === "judge") {
+      query = query.eq("judge_id", user.id);
     }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Error fetching cases:", error);
+    } else {
+      setCases(data);
+    }
+    setLoading(false);
   };
 
-  // Type badge styling
-  const getTypeStyle = (type: CaseType) => {
-    switch (type) {
-      case "criminal":
-        return "bg-red-100 text-red-800 hover:bg-red-100";
-      case "civil":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-100";
-      case "family":
-        return "bg-teal-100 text-teal-800 hover:bg-teal-100";
-      case "corporate":
-        return "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
+  useEffect(() => {
+    fetchCases();
+  }, []);
+
+  // Filter cases based on search term and status
+  const filteredCases = cases.filter(caseItem => {
+    const matchesSearch = 
+      caseItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      caseItem.case_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      caseItem.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || caseItem.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Get status badge color
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>;
+      case "pending":
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600"><Clock4 className="h-3 w-3 mr-1" /> Pending</Badge>;
+      case "closed":
+        return <Badge className="bg-gray-500 hover:bg-gray-600"><AlertCircle className="h-3 w-3 mr-1" /> Closed</Badge>;
       default:
-        return "";
+        return <Badge variant="outline" className="capitalize">{status}</Badge>;
     }
   };
 
   return (
     <PageLayout>
-      <div className="container py-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+      <div className="container py-6 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Cases</h1>
-            <p className="text-muted-foreground">
-              {role === 'admin' ? 'Manage and track all legal cases' : 'View and track your cases'}
-            </p>
+            <p className="text-muted-foreground">Manage and view all your legal cases</p>
           </div>
-          {role === 'admin' && (
-            <Button className="mt-4 md:mt-0 bg-court-primary hover:bg-court-primary/90">
-              <Plus className="mr-2 h-4 w-4" /> Add New Case
+          
+          {user.role === "client" && (
+            <Button className="bg-court-primary hover:bg-court-primary/90">
+              <Plus className="h-4 w-4 mr-2" />
+              New Case
             </Button>
           )}
         </div>
-
-        <div className="bg-white rounded-lg border shadow-sm">
-          {/* Filters */}
-          <div className="p-4 border-b">
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search cases..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as CaseStatus | "all")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                    <SelectItem value="appealed">Appealed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as CaseType | "all")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="criminal">Criminal</SelectItem>
-                    <SelectItem value="civil">Civil</SelectItem>
-                    <SelectItem value="family">Family</SelectItem>
-                    <SelectItem value="corporate">Corporate</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+        
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search cases..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           
-          {/* Cases Table */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Case Number</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Filing Date</TableHead>
-                  {role === 'admin' || role === 'judge' || role === 'lawyer' ? <TableHead>Client</TableHead> : null}
-                  {role === 'admin' || role === 'client' || role === 'judge' ? <TableHead>Lawyer</TableHead> : null}
-                  {role === 'admin' || role === 'client' || role === 'lawyer' ? <TableHead>Judge</TableHead> : null}
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCases.length > 0 ? (
-                  filteredCases.map((caseItem) => {
-                    const client = getPersonById(caseItem.clientId, 'client');
-                    const lawyer = getPersonById(caseItem.lawyerId, 'lawyer');
-                    const judge = getPersonById(caseItem.judgeId, 'judge');
-                    
-                    return (
-                      <TableRow key={caseItem.id}>
-                        <TableCell>
-                          <Link to={`/cases/${caseItem.id}`} className="font-medium text-court-primary hover:underline">
-                            {caseItem.caseNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{caseItem.title}</TableCell>
-                        <TableCell>
-                          <Badge className={cn("capitalize", getStatusStyle(caseItem.status))}>
-                            {caseItem.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn("capitalize", getTypeStyle(caseItem.type))}>
-                            {caseItem.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{caseItem.filingDate}</TableCell>
-                        {(role === 'admin' || role === 'judge' || role === 'lawyer') && (
-                          <TableCell>{client?.name}</TableCell>
-                        )}
-                        {(role === 'admin' || role === 'client' || role === 'judge') && (
-                          <TableCell>{lawyer?.name}</TableCell>
-                        )}
-                        {(role === 'admin' || role === 'client' || role === 'lawyer') && (
-                          <TableCell>{judge?.name}</TableCell>
-                        )}
-                        <TableCell>
-                          <Link to={`/cases/${caseItem.id}`} className="text-court-primary hover:text-court-primary/90">
-                            <FileText className="h-5 w-5" />
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={role === 'admin' ? 9 : 7} className="text-center py-6">
-                      No cases found matching your filters
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
+        
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-court-primary"></div>
+          </div>
+        ) : filteredCases.length === 0 ? (
+          <Card className="p-8 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium">No cases found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || statusFilter !== "all" 
+                ? "Try adjusting your search or filter criteria" 
+                : "You don't have any cases yet"}
+            </p>
+            {user.role === "client" && (
+              <Button className="bg-court-primary hover:bg-court-primary/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Create your first case
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCases.map((caseItem) => (
+              <Card key={caseItem.id} className="flex flex-col h-full hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="line-clamp-1">{caseItem.title}</CardTitle>
+                      <CardDescription className="flex items-center mt-1">
+                        <FileText className="h-3 w-3 mr-1" />
+                        {caseItem.case_number || "No case number"}
+                      </CardDescription>
+                    </div>
+                    {getStatusBadge(caseItem.status)}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                    {caseItem.description || "No description available"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {caseItem.filing_date ? format(new Date(caseItem.filing_date), "MMM d, yyyy") : "No date"}
+                    </div>
+                    <div className="flex items-center">
+                      <User className="h-3 w-3 mr-1" />
+                      {caseItem.client_name || "Unknown client"}
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Link to={`/cases/${caseItem.id}`} className="w-full">
+                    <Button variant="outline" className="w-full">
+                      View Details
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </PageLayout>
   );

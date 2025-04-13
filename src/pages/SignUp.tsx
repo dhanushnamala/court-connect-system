@@ -141,7 +141,7 @@ const SignUp = () => {
                 <Label htmlFor="role">I am a</Label>
                 <Select 
                   value={role} 
-                  onValueChange={(value) => setRole(value as "client" | "lawyer" | "admin" | "judge")}
+                  onValueChange={(value) => setRole(value as "client" | "lawyer")}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your role" />
@@ -149,8 +149,6 @@ const SignUp = () => {
                   <SelectContent>
                     <SelectItem value="client">Client</SelectItem>
                     <SelectItem value="lawyer">Lawyer</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="judge">Judge</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

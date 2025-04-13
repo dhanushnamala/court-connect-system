@@ -1,4 +1,3 @@
-
 -- Create a table for case information
 CREATE TABLE IF NOT EXISTS public.cases (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -6,9 +5,9 @@ CREATE TABLE IF NOT EXISTS public.cases (
   case_number TEXT NOT NULL UNIQUE,
   description TEXT,
   status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'closed', 'archived')),
-  client_id UUID REFERENCES auth.users(id),
-  lawyer_id UUID REFERENCES auth.users(id),
-  judge_id UUID REFERENCES auth.users(id),
+  client_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  lawyer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  judge_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -57,6 +56,26 @@ CREATE POLICY "Admins can view all cases" ON public.cases
 -- Admins can update all cases
 CREATE POLICY "Admins can manage all cases" ON public.cases
   FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Add a policy to allow admins to insert cases
+CREATE POLICY "Admins can insert cases" ON public.cases
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Add a policy to allow admins to delete cases
+CREATE POLICY "Admins can delete cases" ON public.cases
+  FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.profiles

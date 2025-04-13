@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,8 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import Cases from "./pages/Cases";
 import CaseDetail from "./pages/CaseDetail";
 import Calendar from "./pages/Calendar";
-import Documents from "./pages/Documents";
-import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 import ContactUs from "./pages/ContactUs";
 import Queries from "./pages/Queries";
@@ -85,19 +82,6 @@ const AppRoutes = () => (
       <ProtectedRoute>
         <Calendar />
       </ProtectedRoute>
-    } />
-    
-    <Route path="/documents" element={
-      <ProtectedRoute>
-        <Documents />
-      </ProtectedRoute>
-    } />
-    
-    {/* Admin-only routes */}
-    <Route path="/users" element={
-      <AdminRoute>
-        <Users />
-      </AdminRoute>
     } />
     
     <Route path="/queries" element={

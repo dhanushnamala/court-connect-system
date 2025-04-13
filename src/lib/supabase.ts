@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://vhybphxmzlyesdfvusst.supabase.co';
@@ -20,38 +19,3 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 });
-
-// Ensure the documents bucket exists
-export const ensureDocumentsBucket = async () => {
-  try {
-    // Check if the bucket exists
-    const { data: buckets, error } = await supabase.storage.listBuckets();
-    
-    if (error) {
-      console.error("Error checking buckets:", error);
-      return;
-    }
-    
-    // Check if documents bucket exists
-    const documentsBucket = buckets?.find(bucket => bucket.name === 'documents');
-    
-    if (!documentsBucket) {
-      console.log("Documents bucket not found. Creating one...");
-      
-      // Create documents bucket if it doesn't exist
-      const { error: createError } = await supabase.storage.createBucket('documents', {
-        public: true, 
-        fileSizeLimit: 10485760, // 10MB
-        allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/png', 'image/jpeg', 'image/jpg']
-      });
-      
-      if (createError) {
-        console.error("Error creating documents bucket:", createError);
-      } else {
-        console.log("Documents bucket created successfully");
-      }
-    }
-  } catch (err) {
-    console.error("Error in ensureDocumentsBucket:", err);
-  }
-};

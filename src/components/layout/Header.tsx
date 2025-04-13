@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ const Header = () => {
           </Link>
         </div>
         
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           <nav className="flex items-center gap-4">
             <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Dashboard
@@ -50,14 +49,7 @@ const Header = () => {
             <Link to="/calendar" className="text-sm font-medium text-muted-foreground hover:text-foreground">
               Calendar
             </Link>
-            {role === "admin" && (
-              <Link to="/users" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                Users
-              </Link>
-            )}
-            <Link to="/documents" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Documents
-            </Link>
+            
             {role === "admin" ? (
               <Link to="/queries" className="text-sm font-medium text-muted-foreground hover:text-foreground">
                 Queries
@@ -95,12 +87,6 @@ const Header = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings">Settings</Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
@@ -145,13 +131,7 @@ const Header = () => {
                 Users
               </Link>
             )}
-            <Link 
-              to="/documents" 
-              className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              Documents
-            </Link>
+            
             {role === "admin" ? (
               <Link 
                 to="/queries" 

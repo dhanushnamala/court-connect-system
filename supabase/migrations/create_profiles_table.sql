@@ -1,4 +1,3 @@
-
 -- Create a table for user profiles
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) PRIMARY KEY,
@@ -37,6 +36,26 @@ CREATE POLICY "Admins can view all profiles" ON public.profiles
 -- Admin can update all profiles
 CREATE POLICY "Admins can update all profiles" ON public.profiles
   FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin can insert profiles
+CREATE POLICY "Admins can insert profiles" ON public.profiles
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Admin can delete profiles
+CREATE POLICY "Admins can delete profiles" ON public.profiles
+  FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.profiles

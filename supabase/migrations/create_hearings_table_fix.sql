@@ -1,11 +1,15 @@
--- Create a table for hearing information
+-- Create hearings table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.hearings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   case_id UUID REFERENCES public.cases(id) NOT NULL,
+  judge_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT,
   date TIMESTAMP WITH TIME ZONE NOT NULL,
+  time TEXT NOT NULL,
   location TEXT,
+  courtroom TEXT,
+  duration INTEGER,
   status TEXT NOT NULL CHECK (status IN ('scheduled', 'completed', 'postponed', 'cancelled')),
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -73,3 +77,20 @@ CREATE POLICY "Admins can delete hearings" ON public.hearings
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
+
+-- Create a view for hearings with related data
+CREATE OR REPLACE VIEW public.hearings_with_related_data AS
+SELECT 
+    h.*,
+    c.title AS case_title,
+    c.case_number,
+    judge.name AS judge_name
+FROM 
+    public.hearings h
+LEFT JOIN 
+    public.cases c ON h.case_id = c.id
+LEFT JOIN 
+    public.profiles judge ON h.judge_id = judge.id;
+
+-- Grant access to the view
+GRANT SELECT ON public.hearings_with_related_data TO authenticated; 
