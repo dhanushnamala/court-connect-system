@@ -249,6 +249,62 @@ const LawyerDashboard = () => {
         setCases(lawyerCases);
       }
       
+      // Also fetch cases from approved lawyer requests
+      console.log("Fetching approved lawyer requests for lawyer:", user.id);
+      const { data: approvedRequests, error: approvedRequestsError } = await supabase
+        .from('lawyer_requests')
+        .select('case_id, id, status')
+        .eq('lawyer_id', user.id)
+        .eq('status', 'approved');
+        
+      if (approvedRequestsError) {
+        console.error("Error fetching approved lawyer requests:", approvedRequestsError);
+      } else if (approvedRequests && approvedRequests.length > 0) {
+        console.log("Found approved requests:", approvedRequests);
+        
+        // Get the case IDs from approved requests and filter out null values
+        const caseIds = approvedRequests
+          .map(req => req.case_id)
+          .filter(id => id !== null);
+        
+        console.log("Valid case IDs to fetch:", caseIds);
+        
+        // Only fetch cases if there are valid case IDs
+        if (caseIds.length > 0) {
+          // Fetch the cases for these approved requests
+          const { data: requestCases, error: requestCasesError } = await supabase
+            .from('cases')
+            .select('*')
+            .in('id', caseIds);
+            
+          if (requestCasesError) {
+            console.error("Error fetching cases from approved requests:", requestCasesError);
+          } else if (requestCases && requestCases.length > 0) {
+            console.log("Found cases from approved requests:", requestCases);
+            
+            // Combine directly assigned cases with cases from approved requests
+            const casesMap = new Map();
+            
+            // Add directly assigned cases to the map
+            casesData?.forEach(caseItem => {
+              casesMap.set(caseItem.id, caseItem);
+            });
+            
+            // Add cases from approved requests to the map (will not overwrite existing entries)
+            requestCases.forEach(caseItem => {
+              if (!casesMap.has(caseItem.id)) {
+                casesMap.set(caseItem.id, caseItem);
+              }
+            });
+            
+            // Convert map back to array
+            const combinedCases = Array.from(casesMap.values());
+            console.log("Combined cases for lawyer:", combinedCases);
+            setCases(combinedCases);
+          }
+        }
+      }
+      
       // Get upcoming hearings
       const hearings = getUpcomingHearings()
         .filter(h => casesData?.some(c => c.id === h.caseId) || [])
@@ -297,21 +353,30 @@ const LawyerDashboard = () => {
     if (!request || !user) return;
     
     setIsSubmitting(true);
+    console.log("Starting request response process:", { requestId: request.id, status });
     
     try {
-      // Update request status
+      // Update request status with proper timestamp
+      console.log("Updating request status in database");
+      const timestamp = new Date().toISOString();
       const { error: updateError } = await supabase
         .from('lawyer_requests')
         .update({ 
           status,
-          updated_at: new Date()
+          updated_at: timestamp
         })
         .eq('id', request.id);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating request status:", updateError);
+        throw updateError;
+      }
+      console.log("Request status updated successfully");
       
       // If approved, update the case to assign this lawyer
       if (status === 'approved' && request.case_id) {
+        console.log("Approving case:", request.case_id);
+        
         // Get lawyer profile information
         const { data: lawyerProfile, error: profileError } = await supabase
           .from('profiles')
@@ -324,18 +389,26 @@ const LawyerDashboard = () => {
         }
         
         // Update the case with lawyer information
-        const { error: caseError } = await supabase
+        console.log("Updating case with lawyer information");
+        const { data: updatedCase, error: caseError } = await supabase
           .from('cases')
           .update({ 
             lawyer_id: user.id,
             status: 'active',
-            updated_at: new Date()
+            updated_at: timestamp
           })
-          .eq('id', request.case_id);
+          .eq('id', request.case_id)
+          .select()
+          .single();
           
-        if (caseError) throw caseError;
+        if (caseError) {
+          console.error("Error updating case:", caseError);
+          throw caseError;
+        }
+        console.log("Case updated successfully:", updatedCase);
         
         // Create a notification for the client
+        console.log("Creating notification for client");
         const { error: notificationError } = await supabase
           .from('notifications')
           .insert([{
@@ -344,19 +417,39 @@ const LawyerDashboard = () => {
             message: `Your request for legal representation has been approved by ${lawyerProfile?.name || 'the lawyer'}.`,
             type: 'request_approved',
             read: false,
-            created_at: new Date().toISOString()
+            created_at: timestamp
           }]);
           
         if (notificationError) {
           console.error("Error creating notification:", notificationError);
+        } else {
+          console.log("Notification created successfully");
+        }
+
+        // Update the local cases state to include the newly approved case
+        if (updatedCase) {
+          setCases(prevCases => {
+            const caseExists = prevCases.some(c => c.id === updatedCase.id);
+            if (!caseExists) {
+              return [...prevCases, updatedCase];
+            }
+            return prevCases.map(c => c.id === updatedCase.id ? updatedCase : c);
+          });
         }
       }
       
-      // Update local state
+      // Update local state for lawyer requests with proper status
       setLawyerRequests(prev => 
         prev.map(req => 
           req.id === request.id 
-            ? { ...req, status } 
+            ? { 
+                ...req, 
+                status,
+                updated_at: timestamp,
+                case: req.case && status === 'approved' 
+                  ? { ...req.case, status: 'active', lawyer_id: user.id }
+                  : req.case
+              } 
             : req
         )
       );
@@ -371,19 +464,36 @@ const LawyerDashboard = () => {
         description: `You have ${status === 'approved' ? 'accepted' : 'declined'} the client's request`
       });
       
-      // Refetch cases if approved
-      if (status === 'approved') {
-        const { data: casesData } = await supabase
-          .from('cases')
+      // Verify the updates
+      const verifyUpdates = async () => {
+        // Verify request status
+        const { data: verifyRequest } = await supabase
+          .from('lawyer_requests')
           .select('*')
-          .eq('lawyer_id', user.id);
+          .eq('id', request.id)
+          .single();
           
-        if (casesData) {
-          setCases(casesData);
+        console.log("Verified request status:", verifyRequest);
+
+        // Verify case assignment if approved
+        if (status === 'approved' && request.case_id) {
+          const { data: verifyCase } = await supabase
+            .from('cases')
+            .select('*')
+            .eq('id', request.case_id)
+            .single();
+            
+          console.log("Verified case assignment:", verifyCase);
         }
-      }
+      };
+
+      await verifyUpdates();
+      
+      // Refresh the complete data to ensure everything is in sync
+      await fetchData();
       
     } catch (error: any) {
+      console.error("Error in handleRequestResponse:", error);
       toast({
         variant: "destructive",
         title: "Error",

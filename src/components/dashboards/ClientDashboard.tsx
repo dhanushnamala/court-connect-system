@@ -13,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+
 
 // Interface to match the database structure
 interface Case {
@@ -49,10 +48,12 @@ const ClientDashboard = () => {
   const [availableLawyers, setAvailableLawyers] = useState<LawyerProfile[]>([]);
   const [isCreateCaseOpen, setIsCreateCaseOpen] = useState(false);
   const [isRequestLawyerOpen, setIsRequestLawyerOpen] = useState(false);
+  const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<string | null>(null);
   const [selectedLawyer, setSelectedLawyer] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
   const [lawyerRequests, setLawyerRequests] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const { toast } = useToast();
   
   const [caseTitle, setCaseTitle] = useState('');
@@ -60,107 +61,100 @@ const ClientDashboard = () => {
   const [caseType, setCaseType] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const navigate = useNavigate();
-
-  const tabs = [
-    { id: "overview", label: "Overview" },
-    { id: "cases", label: "My Cases" },
-    { id: "requests", label: "Lawyer Requests" },
-    { id: "notifications", label: "Notifications" }
-  ];
-
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
       
       try {
-        // Fetch cases with client profile information
+        console.log("Fetching cases for user:", user.id);
+        
+        // Fetch cases from Supabase
         const { data: casesData, error: casesError } = await supabase
           .from('cases')
-          .select(`
-            *,
-            lawyer:lawyer_id(name, email, specialization),
-            judge:judge_id(name, email)
-          `)
+          .select('*')
           .eq('client_id', user.id);
           
         if (casesError) {
           console.error("Error fetching cases:", casesError);
-          // Don't show toast for this error, just log it
-          setCases([]); // Set empty array instead of showing error
-        } else {
-          setCases(casesData || []);
+          throw casesError;
         }
         
-        // Process lawyers from cases
-        const lawyersMap: {[key: string]: any} = {};
+        console.log("Cases data from database:", casesData);
+        
         if (casesData && casesData.length > 0) {
-          // Get unique lawyer IDs from cases
-          const lawyerIds = casesData
-            .filter(caseItem => caseItem.lawyer_id)
-            .map(caseItem => caseItem.lawyer_id);
+          setCases(casesData);
+        } else {
+          // Fallback to mock data if no cases in database
+          console.log("No cases found in database, using mock data");
+          const clientCases = getCasesByClient(user.id);
+          setCases(clientCases);
+        }
+        
+        // Fetch lawyer requests
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('lawyer_requests')
+          .select('*, profiles!lawyer_id(*)')
+          .eq('client_id', user.id);
           
-          if (lawyerIds.length > 0) {
-            // Fetch lawyer profiles
-            const { data: lawyerProfiles, error: lawyerProfilesError } = await supabase
-              .from('profiles')
-              .select('*')
-              .in('id', lawyerIds);
-              
-            if (lawyerProfilesError) {
-              console.error("Error fetching lawyer profiles:", lawyerProfilesError);
-            } else if (lawyerProfiles) {
-              // Create a map of lawyer profiles
-              lawyerProfiles.forEach(lawyer => {
-                lawyersMap[lawyer.id] = lawyer;
-              });
-            }
+        if (requestsError) {
+          console.error("Error fetching lawyer requests:", requestsError);
+          // Continue with other data fetching despite this error
+        } else if (requestsData) {
+          console.log("Lawyer requests from database:", requestsData);
+          setLawyerRequests(requestsData);
+        }
+        
+        // Fetch available lawyers
+        const { data: lawyersData, error: lawyersError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'lawyer');
+          
+        if (lawyersError) {
+          console.error("Error fetching lawyers:", lawyersError);
+        } else if (lawyersData) {
+          console.log("Available lawyers from database:", lawyersData);
+          setAvailableLawyers(lawyersData);
+        }
+        
+        // Fetch documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('uploaded_by', user.id);
+          
+        if (documentsError) {
+          console.error("Error fetching documents:", documentsError);
+        } else if (documentsData) {
+          setDocuments(documentsData);
+        }
+        
+      } catch (error) {
+        console.error("Error in fetchData:", error);
+        
+        // Fallback to mock data
+        const clientCases = getCasesByClient(user.id);
+        setCases(clientCases);
+      }
+      
+      // Process lawyer details for existing cases
+      const lawyerDetails: {[key: string]: any} = {};
+      cases.forEach(c => {
+        // Check for both lawyerId and lawyer_id
+        const lawyerId = c.lawyerId || c.lawyer_id;
+        if (lawyerId) {
+          const lawyer = getPersonById(lawyerId, 'lawyer');
+          if (lawyer) {
+            lawyerDetails[lawyerId] = lawyer;
           }
         }
-        setLawyers(lawyersMap);
-        
-        // Fetch lawyer requests and available lawyers in parallel
-        const [lawyerRequestsResponse, availableLawyersResponse] = await Promise.all([
-          supabase
-            .from('lawyer_requests')
-            .select(`
-              *,
-              lawyer:lawyer_id(name, email, specialization)
-            `)
-            .eq('client_id', user.id),
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('role', 'lawyer')
-        ]);
-        
-        if (lawyerRequestsResponse.error) {
-          console.error("Error fetching lawyer requests:", lawyerRequestsResponse.error);
-          setLawyerRequests([]); // Set empty array instead of showing error
-        } else {
-          setLawyerRequests(lawyerRequestsResponse.data || []);
-        }
-        
-        if (availableLawyersResponse.error) {
-          console.error("Error fetching available lawyers:", availableLawyersResponse.error);
-          setAvailableLawyers([]); // Set empty array instead of showing error
-        } else {
-          setAvailableLawyers(availableLawyersResponse.data || []);
-        }
-        
-      } catch (error: any) {
-        console.error("Error in fetchData:", error);
-        // Only show toast for unexpected errors
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "An unexpected error occurred. Please try again later."
-        });
-      }
+      });
+      
+      setLawyers(lawyerDetails);
     };
     
     fetchData();
-  }, [user, toast]);
+  }, [user]);
 
   const handleCreateCase = async () => {
     if (!user) return;
@@ -189,13 +183,12 @@ const ClientDashboard = () => {
           client_id: user.id,
           created_at: new Date().toISOString()
         }])
-        .select('*, profiles!client_id(*)')
-        .single();
+        .select();
         
       if (error) throw error;
       
       if (data) {
-        setCases(prev => [...prev, data]);
+        setCases(prev => [...prev, data[0]]);
         
         toast({
           title: "Case Created",
@@ -251,42 +244,6 @@ const ClientDashboard = () => {
         
       if (requestsData) {
         setLawyerRequests(requestsData);
-        
-        // Check if any requests were approved and update lawyers state
-        const approvedRequests = requestsData.filter((request: any) => request.status === 'approved');
-        if (approvedRequests.length > 0) {
-          // Fetch cases
-          const { data: casesData } = await supabase
-            .from('cases')
-            .select('*')
-            .eq('client_id', user.id);
-            
-          if (casesData) {
-            // Get unique lawyer IDs from cases
-            const lawyerIds = casesData
-              .filter(caseItem => caseItem.lawyer_id)
-              .map(caseItem => caseItem.lawyer_id);
-            
-            if (lawyerIds.length > 0) {
-              // Fetch lawyer profiles
-              const { data: lawyerProfiles, error: lawyerProfilesError } = await supabase
-                .from('profiles')
-                .select('*')
-                .in('id', lawyerIds);
-                
-              if (lawyerProfilesError) {
-                console.error("Error fetching lawyer profiles:", lawyerProfilesError);
-              } else if (lawyerProfiles) {
-                // Create a map of lawyer profiles
-                const lawyersMap: {[key: string]: any} = {};
-                lawyerProfiles.forEach(lawyer => {
-                  lawyersMap[lawyer.id] = lawyer;
-                });
-                setLawyers(lawyersMap);
-              }
-            }
-          }
-        }
       }
       
       setSelectedLawyer(null);
@@ -301,6 +258,24 @@ const ClientDashboard = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const refreshDocuments = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('uploaded_by', user.id);
+        
+      if (error) throw error;
+      if (data) {
+        setDocuments(data);
+      }
+    } catch (error) {
+      console.error("Error refreshing documents:", error);
     }
   };
 
@@ -353,7 +328,9 @@ const ClientDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Assigned Lawyers</p>
-                <p className="text-xl font-bold">{Object.keys(lawyers).length}</p>
+                <p className="text-xl font-bold">
+                  {lawyerRequests.filter(request => request.status === 'approved').length}
+                </p>
               </div>
             </div>
           </div>
@@ -361,9 +338,9 @@ const ClientDashboard = () => {
       </Card>
       
       <Tabs defaultValue="cases" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted p-1">
-          <TabsTrigger value="cases">Cases</TabsTrigger>
-          <TabsTrigger value="lawyers">Lawyers</TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="cases">Your Cases</TabsTrigger>
+          <TabsTrigger value="lawyers">Legal Team</TabsTrigger>
         </TabsList>
         
         <TabsContent value="cases">
@@ -445,8 +422,9 @@ const ClientDashboard = () => {
               <CardDescription>Attorneys assigned to your cases</CardDescription>
             </CardHeader>
             <CardContent>
-              {Object.values(lawyers).length > 0 ? (
+              {Object.values(lawyers).length > 0 || lawyerRequests.some(req => req.status === 'approved') ? (
                 <div className="grid gap-4 md:grid-cols-2">
+                  {/* Show assigned lawyers */}
                   {Object.values(lawyers).map((lawyer: any) => (
                     <div key={lawyer.id} className="flex items-start gap-3 p-3 border rounded-lg">
                       <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
@@ -464,17 +442,29 @@ const ClientDashboard = () => {
                       </div>
                     </div>
                   ))}
+                  {/* Show approved lawyers from requests */}
+                  {lawyerRequests
+                    .filter(req => req.status === 'approved')
+                    .map(request => (
+                      <div key={request.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                          {request.profiles?.name?.charAt(0) || 'L'}
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{request.profiles?.name || 'Lawyer'}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {request.profiles?.specialization || 'Attorney at Law'}
+                          </p>
+                          <div className="mt-1 flex gap-3">
+                            <p className="text-xs">{request.profiles?.email}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <div className="text-center py-6">
                   <p className="text-muted-foreground">No attorneys assigned yet</p>
-                  <Button 
-                    className="mt-4" 
-                    variant="outline"
-                    onClick={() => setIsRequestLawyerOpen(true)}
-                  >
-                    Request a Lawyer
-                  </Button>
                 </div>
               )}
               
@@ -635,6 +625,9 @@ const ClientDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+     
+
     </div>
   );
 };

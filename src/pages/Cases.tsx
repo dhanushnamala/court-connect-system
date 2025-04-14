@@ -31,12 +31,51 @@ const Cases = () => {
 
   const fetchCases = async () => {
     let query = supabase.from("cases").select("*");
+    let approvedRequestCases = [];
 
     // Filter cases based on user role
     if (user.role === "client") {
       query = query.eq("client_id", user.id);
     } else if (user.role === "lawyer") {
+      // For lawyers, fetch cases directly assigned to them
       query = query.eq("lawyer_id", user.id);
+      
+      // Also fetch cases from approved lawyer requests
+      console.log("Fetching approved lawyer requests for lawyer:", user.id);
+      const { data: approvedRequests, error: requestsError } = await supabase
+        .from("lawyer_requests")
+        .select("case_id")
+        .eq("lawyer_id", user.id)
+        .eq("status", "approved");
+        
+      if (requestsError) {
+        console.error("Error fetching approved lawyer requests:", requestsError);
+      } else if (approvedRequests && approvedRequests.length > 0) {
+        console.log("Found approved requests:", approvedRequests);
+        
+        // Get the case IDs from approved requests and filter out null values
+        const caseIds = approvedRequests
+          .map(req => req.case_id)
+          .filter(id => id !== null);
+        
+        // Only fetch cases if there are valid case IDs
+        if (caseIds.length > 0) {
+          // Fetch the cases for these approved requests
+          const { data: requestCases, error: casesError } = await supabase
+            .from("cases")
+            .select("*")
+            .in("id", caseIds);
+            
+          if (casesError) {
+            console.error("Error fetching cases from approved requests:", casesError);
+          } else if (requestCases) {
+            console.log("Found cases from approved requests:", requestCases);
+            approvedRequestCases = requestCases;
+          }
+        } else {
+          console.log("No valid case IDs found in approved requests");
+        }
+      }
     } else if (user.role === "judge") {
       query = query.eq("judge_id", user.id);
     }
@@ -45,7 +84,30 @@ const Cases = () => {
     if (error) {
       console.error("Error fetching cases:", error);
     } else {
-      setCases(data);
+      // For lawyers, combine directly assigned cases with cases from approved requests
+      if (user.role === "lawyer" && approvedRequestCases.length > 0) {
+        // Create a map of existing cases to avoid duplicates
+        const casesMap = new Map();
+        
+        // Add directly assigned cases to the map
+        data.forEach(caseItem => {
+          casesMap.set(caseItem.id, caseItem);
+        });
+        
+        // Add cases from approved requests to the map (will not overwrite existing entries)
+        approvedRequestCases.forEach(caseItem => {
+          if (!casesMap.has(caseItem.id)) {
+            casesMap.set(caseItem.id, caseItem);
+          }
+        });
+        
+        // Convert map back to array
+        const combinedCases = Array.from(casesMap.values());
+        console.log("Combined cases for lawyer:", combinedCases);
+        setCases(combinedCases);
+      } else {
+        setCases(data);
+      }
     }
     setLoading(false);
   };

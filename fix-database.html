@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Court Connect - Database Fix Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .instructions {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #logArea {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        .log-error {
+            color: #e74c3c;
+        }
+        .log-success {
+            color: #2ecc71;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Court Connect - Database Fix Tool</h1>
+        
+        <div class="instructions">
+            <h2>Instructions</h2>
+            <ol>
+                <li>Make sure you are logged in to the Court Connect application</li>
+                <li>Click the "Fix Database" button below</li>
+                <li>Check the log area for results</li>
+                <li>The page will automatically reload after the fix is complete</li>
+            </ol>
+        </div>
+        
+        <button id="fixButton">Fix Database</button>
+        <div id="status" class="status"></div>
+        <div id="logArea"></div>
+    </div>
+
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Fix Database Script -->
+    <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://xyzcompany.supabase.co';
+        const supabaseKey = 'public-anon-key';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Override console.log and console.error to display in the log area
+        const logArea = document.getElementById('logArea');
+        const statusElement = document.getElementById('status');
+        
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function() {
+            const args = Array.from(arguments);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            originalConsoleLog.apply(console, arguments);
+        };
+        
+        console.error = function() {
+            const args = Array.from(arguments);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry log-error';
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ERROR: ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            originalConsoleError.apply(console, arguments);
+        };
+        
+        // Add event listener to the fix button
+        document.getElementById('fixButton').addEventListener('click', async function() {
+            this.disabled = true;
+            statusElement.textContent = 'Running database fix...';
+            statusElement.style.color = '#3498db';
+            
+            try {
+                // Check if user is logged in
+                const userJson = localStorage.getItem('user');
+                if (!userJson) {
+                    console.error('No user found in localStorage. Please log in first.');
+                    statusElement.textContent = 'Error: Please log in first';
+                    statusElement.style.color = '#e74c3c';
+                    this.disabled = false;
+                    return;
+                }
+                
+                const user = JSON.parse(userJson);
+                console.log(`Running fix for user: ${user.id} (${user.email})`);
+                
+                // Run the fix
+                const fixedCount = await fixDatabaseInconsistencies(user.id);
+                
+                console.log(`Database fix completed. Fixed ${fixedCount} cases.`);
+                statusElement.textContent = `Database fix completed. Fixed ${fixedCount} cases.`;
+                statusElement.style.color = '#2ecc71';
+                
+                // Reload the page after a delay
+                console.log('The page will reload in 3 seconds...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } catch (error) {
+                console.error('Error running database fix:', error);
+                statusElement.textContent = 'Error running database fix';
+                statusElement.style.color = '#e74c3c';
+                this.disabled = false;
+            }
+        });
+    </script>
+    
+    <!-- Include the fixDatabase.js script -->
+    <script src="src/utils/fixDatabase.js"></script>
+</body>
+</html> 
