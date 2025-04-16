@@ -82,9 +82,6 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <a href="#" className="text-sm text-court-accent hover:text-court-primary">
-                    Forgot password?
-                  </a>
                 </div>
                 <Input
                   id="password"
@@ -95,15 +92,6 @@ const Login = () => {
                 />
               </div>
               
-              <div className="text-sm text-muted-foreground">
-                <p>Demo accounts (password: password):</p>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>admin@example.com (Admin)</li>
-                  <li>lawyer@example.com (Lawyer)</li>
-                  <li>judge@example.com (Judge)</li>
-                  <li>client@example.com (Client)</li>
-                </ul>
-              </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
               <Button 
