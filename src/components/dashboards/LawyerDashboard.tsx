@@ -305,19 +305,52 @@ const LawyerDashboard = () => {
         }
       }
       
-      // Get upcoming hearings
-      const hearings = getUpcomingHearings()
-        .filter(h => casesData?.some(c => c.id === h.caseId) || [])
-        .map(h => {
-          const relatedCase = casesData?.find(c => c.id === h.caseId) || 
-                            cases.find(c => c.id === h.caseId);
-          return {
-            ...h,
-            caseTitle: relatedCase?.title || 'Unknown Case'
-          };
-        });
+      // Fetch upcoming hearings from the database
+      console.log("Fetching upcoming hearings for lawyer:", user.id);
+      
+      // Get all case IDs for this lawyer
+      const allCaseIds = casesData?.map(c => c.id) || [];
+      
+      if (allCaseIds.length > 0) {
+        // Fetch hearings for these cases
+        const { data: hearingsData, error: hearingsError } = await supabase
+          .from('hearings_with_related_data')
+          .select('*')
+          .in('case_id', allCaseIds)
+          .eq('status', 'scheduled')
+          .gte('date', new Date().toISOString().split('T')[0])
+          .order('date', { ascending: true });
           
-      setUpcomingHearings(hearings);
+        if (hearingsError) {
+          console.error("Error fetching hearings:", hearingsError);
+          throw hearingsError;
+        }
+        
+        if (hearingsData && hearingsData.length > 0) {
+          console.log("Hearings data from database:", hearingsData);
+          
+          // Format hearings to match our Hearing type
+          const formattedHearings = hearingsData.map(hearing => ({
+            id: hearing.id,
+            caseId: hearing.case_id,
+            date: hearing.date,
+            time: hearing.time,
+            courtroom: hearing.courtroom,
+            duration: hearing.duration,
+            description: hearing.description,
+            status: hearing.status,
+            caseTitle: hearing.case_title || 'Unknown Case'
+          }));
+          
+          setUpcomingHearings(formattedHearings);
+        } else {
+          console.log("No upcoming hearings found in database");
+          setUpcomingHearings([]);
+        }
+      } else {
+        console.log("No cases found for lawyer, no hearings to fetch");
+        setUpcomingHearings([]);
+      }
       
     } catch (error) {
       console.error("Error fetching data:", error);

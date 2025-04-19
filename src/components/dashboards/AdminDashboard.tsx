@@ -116,10 +116,16 @@ const AdminDashboard = () => {
           .from('admin_users')
           .select('*');
         
-        const [casesData, requestsData, documentsData] = await Promise.all([
+        const [casesData, requestsData, documentsData, hearingsData] = await Promise.all([
           supabase.from('cases').select('*'),
           supabase.from('lawyer_requests').select('*, profiles:client_id(*), lawyer:lawyer_id(*), cases(*)'),
-          supabase.from('documents').select('*')
+          supabase.from('documents').select('*'),
+          supabase.from('hearings_with_related_data')
+            .select('*')
+            .gte('date', new Date().toISOString().split('T')[0])
+            .eq('status', 'scheduled')
+            .order('date', { ascending: true })
+            .limit(5)
         ]);
         
         setPersonnel({
@@ -150,14 +156,33 @@ const AdminDashboard = () => {
             closedCases,
             appealedCases,
             casesByType,
-            upcomingHearings: 0
+            upcomingHearings: hearingsData.data?.length || 0
           });
         }
         
         if (requestsData.data) {
           setLawyerRequests(requestsData.data);
         }
+
+        if (hearingsData.data) {
+          const formattedHearings = hearingsData.data.map(hearing => ({
+            id: hearing.id,
+            caseId: hearing.case_id,
+            date: hearing.date,
+            time: hearing.time,
+            courtroom: hearing.courtroom,
+            duration: hearing.duration,
+            description: hearing.description,
+            status: hearing.status,
+            caseTitle: hearing.case_title,
+            judgeName: hearing.judge_name
+          }));
+          setUpcomingHearings(formattedHearings);
+        }
         
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        // Fallback to mock data
         const hearings = getUpcomingHearings().map(hearing => {
           const relatedCase = getCaseById(hearing.caseId);
           const judge = relatedCase ? getPersonById(relatedCase.judgeId, 'judge') : undefined;
@@ -170,9 +195,6 @@ const AdminDashboard = () => {
         });
         
         setUpcomingHearings(hearings.slice(0, 5));
-        
-      } catch (error) {
-        console.error("Error fetching data:", error);
       }
     };
     
@@ -211,7 +233,7 @@ const AdminDashboard = () => {
 
       {!isShowingUserCreation && (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Cases</CardTitle>
@@ -236,19 +258,6 @@ const AdminDashboard = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {personnel.lawyers.length} lawyers, {personnel.judges.length} judges, {personnel.clients.length} clients
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Documents</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">28</div>
-                <p className="text-xs text-muted-foreground">
-                  6 uploaded this week
                 </p>
               </CardContent>
             </Card>
