@@ -66,9 +66,10 @@ const Header = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src="/placeholder.svg" alt={user?.name} />
-                  <AvatarFallback>{user?.name?.charAt(0) || "U"}</AvatarFallback>
+                <Avatar className="h-9 w-9 bg-primary">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -80,7 +81,6 @@ const Header = () => {
                   <p className="text-xs text-muted-foreground capitalize">{role}</p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
             </DropdownMenuContent>

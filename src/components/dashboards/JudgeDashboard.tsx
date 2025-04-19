@@ -123,9 +123,9 @@ const JudgeDashboard = () => {
       {/* Welcome Banner */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-700">
         <CardContent className="px-6 py-8 text-white">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
-              <Gavel className="h-6 w-6" />
+          <div className="flex items-center gap-6">
+            <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+              {(user?.name?.[0] || user?.email?.[0] || 'J').toUpperCase()}
             </div>
             <div>
               <h2 className="text-2xl font-bold">Welcome, Judge {user?.name || user?.email || 'User'}</h2>
