@@ -6,9 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CaseTimeline } from './CaseTimeline';
 import { CaseMessages } from './CaseMessages';
 
-// ... existing code ...
 
-// In the Tabs component, remove the documents tab
 <Tabs defaultValue="details" className="w-full">
   <TabsList className="grid w-full grid-cols-2">
     <TabsTrigger value="details">Details</TabsTrigger>
@@ -18,4 +16,3 @@ import { CaseMessages } from './CaseMessages';
   {/* ... existing tabs content ... */}
 </Tabs>
 
-// ... rest of the existing code ... 

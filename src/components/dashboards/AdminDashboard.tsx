@@ -355,7 +355,6 @@ const AdminDashboard = () => {
                             <p>{lawyer.email}</p>
                             <p>{lawyer.years_of_experience !== undefined ? `${lawyer.years_of_experience} years experience` : ''}</p>
                           </div>
-                          <Button variant="outline" size="sm">View Profile</Button>
                         </div>
                       ))}
                     </TabsContent>
@@ -375,7 +374,6 @@ const AdminDashboard = () => {
                             <p>{judge.email}</p>
                             <p>{judge.court_specialty || ''}</p>
                           </div>
-                          <Button variant="outline" size="sm">View Profile</Button>
                         </div>
                       ))}
                     </TabsContent>
@@ -395,7 +393,6 @@ const AdminDashboard = () => {
                             <p>{client.email}</p>
                             <p>{client.contact_number || ''}</p>
                           </div>
-                          <Button variant="outline" size="sm">View Profile</Button>
                         </div>
                       ))}
                     </TabsContent>
@@ -411,10 +408,6 @@ const AdminDashboard = () => {
                     <CardTitle>Case Management</CardTitle>
                     <CardDescription>Administer all court cases</CardDescription>
                   </div>
-                  <Button>
-                    <FileText className="mr-2 h-4 w-4" /> 
-                    New Case
-                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
