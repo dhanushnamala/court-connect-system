@@ -1,7 +1,6 @@
 
 # Court Connect System
 
-... existing content ...
 
 ## Supabase Configuration
 
